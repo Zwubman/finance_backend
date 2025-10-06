@@ -81,7 +81,7 @@ const ExpenseRequest = sequelize.define(
       allowNull: true,
     },
     allowance_receipt: {
-      type: DataTypes.STRING, // Could be a filename or receipt number
+      type: DataTypes.STRING, 
       allowNull: true,
     },
     bank_account_number: {
