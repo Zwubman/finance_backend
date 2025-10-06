@@ -247,10 +247,10 @@ export const updateEmployee = async (req, res) => {
     if (first_name) to_update.first_name = first_name;
     if (middle_name) to_update.middle_name = middle_name;
     if (last_name) to_update.last_name = last_name;
-    if( department) to_update.department = department;
-    if( position) to_update.position = position;
-    if( salary) to_update.salary = salary;
-    if( hired_date) to_update.hired_date = hired_date;
+    if (department) to_update.department = department;
+    if (position) to_update.position = position;
+    if (salary) to_update.salary = salary;
+    if (hired_date) to_update.hired_date = hired_date;
 
     await employee.update(to_update);
 
