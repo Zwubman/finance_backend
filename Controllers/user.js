@@ -153,13 +153,8 @@ export const getAllUsers = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      first_name,
-      middle_name,
-      last_name,
-      email,
-      phone_number,
-    } = req.body;
+    const { first_name, middle_name, last_name, email, phone_number } =
+      req.body;
 
     if (Object.keys(req.body).length === 0) {
       return res.status(400).json({
