@@ -14,6 +14,10 @@ const BankAccount = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    account_owner_name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     account_type: {
       type: DataTypes.ENUM("Checking", "Savings", "Credit"),
       allowNull: false,
@@ -30,6 +34,7 @@ const BankAccount = sequelize.define(
     currency: {
       type: DataTypes.STRING,
       allowNull: false,
+      defaultValue: "ETB",
     },
     balance: {
       type: DataTypes.DECIMAL,

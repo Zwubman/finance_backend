@@ -2,7 +2,7 @@ import { DataTypes } from "sequelize";
 import sequelize from "../Config/database.js";
 import User from "./user.js";
 import Expense from "./expense.js";
-import IncomeSource from "./income_source.js";
+import Income from "./income.js";
 import Loan from "./loan.js";
 import Project from "./project.js";
 
@@ -71,7 +71,7 @@ const Transaction = sequelize.define(
       },
     },
     receipt: {
-          type: DataTypes.STRING, // Could be a filename or receipt number
+          type: DataTypes.STRING, 
           allowNull: true,
         },
     approved_by: {
@@ -113,8 +113,8 @@ User.hasMany(Transaction, { foreignKey: "deleted_by" });
 Transaction.belongsTo(Expense, { foreignKey: "expense_id" });
 Expense.hasMany(Transaction, { foreignKey: "expense_id" });
 
-Transaction.belongsTo(IncomeSource, { foreignKey: "income_id" });
-IncomeSource.hasMany(Transaction, { foreignKey: "income_id" });
+Transaction.belongsTo(Income, { foreignKey: "income_id" });
+Income.hasMany(Transaction, { foreignKey: "income_id" });
 
 Transaction.belongsTo(Loan, { foreignKey: "loan_id" });
 Loan.hasMany(Transaction, { foreignKey: "loan_id" });

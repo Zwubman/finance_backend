@@ -1,50 +1,47 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../Config/database.js";
 import User from "./user.js";
-import e from "express";
+import BankAccount from "./bank_account.js";
 
-const Expense = sequelize.define(
-  "expense",
+
+const Income = sequelize.define(
+  "income",
   {
-    expense_id: {
+    income_id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },
-    expense_reason: {
+    income_source: {
       type: DataTypes.ENUM(
-        "Office & Administration",
-        "Employee Costs",
-        "Technology and infrastructure",
-        "Sales & Marketing",
-        "Finance & Legal",
-        "Travel & Miscellaneous"
+        "Software sales",
+        "Subscription",
+        "Support & maintenance contracts",
+        "Training & workshops",
+        "API usage charges",
+        "Marketplace / app store income"
       ),
-      allowNull: false,
-    },
-    specific_reason: {
-      type: DataTypes.STRING,
       allowNull: false,
     },
     amount: {
       type: DataTypes.DECIMAL,
       allowNull: false,
     },
-    expensed_date: {
+    description: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    received_date: {
       type: DataTypes.DATE,
       allowNull: false,
     },
-    from_account: {
+    to_account: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: "bank_accounts",
         key: "account_id",
       },
-    },
-    description: {
-      type: DataTypes.STRING,
-      allowNull: true,
     },
     receipt: {
       type: DataTypes.STRING,
@@ -69,13 +66,16 @@ const Expense = sequelize.define(
     },
   },
   {
-    tableName: "expenses",
+    tableName: "incomes",
     timestamps: true,
     freezeTableName: true,
   }
 );
 
-Expense.belongsTo(User, { foreignKey: "deleted_by" });
-User.hasMany(Expense, { foreignKey: "deleted_by" });
+Income.belongsTo(User, { foreignKey: "deleted_by" });
+User.hasMany(Income, { foreignKey: "deleted_by" });
 
-export default Expense;
+Income.belongsTo(BankAccount, { foreignKey: "to_account" });
+BankAccount.hasMany(Income, { foreignKey: "to_account" });
+
+export default Income;
