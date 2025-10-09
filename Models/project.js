@@ -19,7 +19,7 @@ const Project = sequelize.define(
       type: DataTypes.DATE,
       allowNull: false,
     },
-    end_date: {
+    expected_end_date: {
       type: DataTypes.DATE,
       allowNull: false,
     },
@@ -30,6 +30,30 @@ const Project = sequelize.define(
     actual_cost: {
       type: DataTypes.DECIMAL,
       allowNull: true,
+      defaultValue: 0,
+    },
+    employee_salary_cost: {
+      type: DataTypes.DECIMAL,
+      defaultValue: 0,
+    },
+    requirement_gathering_cost: {
+      type: DataTypes.DECIMAL,
+      defaultValue: 0,
+    },
+    allowance_cost: {
+      type: DataTypes.DECIMAL,
+      defaultValue: 0,
+    },
+    purchase_cost: {
+      type: DataTypes.DECIMAL,
+      defaultValue: 0,
+    },
+    advisor_cost: {
+      type: DataTypes.DECIMAL,
+      defaultValue: 0,
+    },
+    total_estimated_cost: {
+      type: DataTypes.DECIMAL,
       defaultValue: 0,
     },
     status: {
@@ -62,7 +86,7 @@ const Project = sequelize.define(
   }
 );
 
-Project.belongsTo(User, { foreignKey: "deleted_by"});
+Project.belongsTo(User, { foreignKey: "deleted_by" });
 User.hasMany(Project, { foreignKey: "deleted_by" });
 
 export default Project;

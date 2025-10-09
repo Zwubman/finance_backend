@@ -12,6 +12,7 @@ import "./Models/employee.js";
 import "./Models/expense.js";
 import "./Models/loan.js";
 import "./Models/project.js";
+import "./Models/project_employee.js"
 import routes from "./Routes/index.js";
 import { login, logout, refresh } from "./Controllers/auth.js";
 import { authenticate } from "./Middlewares/auth.js";

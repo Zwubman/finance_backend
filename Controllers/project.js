@@ -1,4 +1,5 @@
 import Project from "../Models/project.js";
+import ProjectEmployee from "../Models/project_employee.js";
 
 export const createProject = async (req, res) => {
   try {
@@ -35,10 +36,21 @@ export const createProject = async (req, res) => {
       status,
     });
 
+    const employees = req.body.employee_id || []
+    const project_employees_data = employees.map((employee_id, index) => ({
+      project_id: project.project_id,
+      employee_id,
+    }))
+
+    let project_employees = []
+    if(project_employees_data.length > 0){
+      project_employees = await ProjectEmployee.bulkCreate(project_employees_data)
+    }
+
     return res.status(201).json({
       success: true,
-      message: "Project created successfully",
-      data: project,
+      message: "Project created successfully and assigned to employees",
+      data: {project, project_employees},
     });
   } catch (error) {
     console.error("Error in create project:", error);

@@ -2,7 +2,8 @@ import { DataTypes } from "sequelize";
 import sequelize from "../Config/database.js";
 import User from "./user.js";
 import BankAccount from "./bank_account.js";
-
+import Project from "./project.js";
+import Loan from "./loan.js";
 
 const Income = sequelize.define(
   "income",
@@ -19,7 +20,11 @@ const Income = sequelize.define(
         "Support & maintenance contracts",
         "Training & workshops",
         "API usage charges",
-        "Marketplace / app store income"
+        "Marketplace / app store income",
+        "Project income",
+        "Repaid from employee loan",
+        "Income from loans",
+        "Other"
       ),
       allowNull: false,
     },
@@ -41,6 +46,22 @@ const Income = sequelize.define(
       references: {
         model: "bank_accounts",
         key: "account_id",
+      },
+    },
+    project_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "projects",
+        key: "project_id",
+      },
+    },
+    loan_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "loans",
+        key: "loan_id",
       },
     },
     receipt: {
@@ -77,5 +98,11 @@ User.hasMany(Income, { foreignKey: "deleted_by" });
 
 Income.belongsTo(BankAccount, { foreignKey: "to_account" });
 BankAccount.hasMany(Income, { foreignKey: "to_account" });
+
+Income.belongsTo(Project, { foreignKey: "project_id" });
+Project.hasMany(Income, { foreignKey: "project_id" });
+
+Income.belongsTo(Loan, { foreignKey: "loan_id" });
+Loan.hasMany(Income, { foreignKey: "loan_id" });
 
 export default Income;

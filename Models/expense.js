@@ -1,7 +1,9 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../Config/database.js";
 import User from "./user.js";
-import e from "express";
+import Project from "./project.js";
+import Loan from "./loan.js";
+import BankAccount from "./bank_account.js";
 
 const Expense = sequelize.define(
   "expense",
@@ -18,7 +20,11 @@ const Expense = sequelize.define(
         "Technology and infrastructure",
         "Sales & Marketing",
         "Finance & Legal",
-        "Travel & Miscellaneous"
+        "Travel & Miscellaneous",
+        "Project expenses",
+        "Expense for employee loan",
+        "Repaid for loan expense",
+        "Other"
       ),
       allowNull: false,
     },
@@ -45,6 +51,22 @@ const Expense = sequelize.define(
     description: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    project_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "projects",
+        key: "project_id",
+      },
+    },
+    loan_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "loans",
+        key: "loan_id",
+      },
     },
     receipt: {
       type: DataTypes.STRING,
@@ -77,5 +99,14 @@ const Expense = sequelize.define(
 
 Expense.belongsTo(User, { foreignKey: "deleted_by" });
 User.hasMany(Expense, { foreignKey: "deleted_by" });
+
+Expense.belongsTo(Project, { foreignKey: "project_id" });
+Project.hasMany(Expense, { foreignKey: "project_id" });
+
+Expense.belongsTo(BankAccount, { foreignKey: "from_account" });
+BankAccount.hasMany(Expense, { foreignKey: "from_account" });
+
+Expense.belongsTo(Loan, { foreignKey: "loan_id" });
+Loan.hasMany(Expense, { foreignKey: "loan_id" });
 
 export default Expense;

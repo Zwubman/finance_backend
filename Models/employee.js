@@ -1,6 +1,5 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../Config/database.js";
-import Project from "./project.js";
 import User from "./user.js";
 
 const Employee = sequelize.define(
@@ -10,14 +9,6 @@ const Employee = sequelize.define(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
-    },
-    project_id: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: "projects",
-        key: "project_id",
-      },
     },
     first_name: {
       type: DataTypes.STRING,
@@ -90,8 +81,6 @@ const Employee = sequelize.define(
   }
 );
 
-Employee.belongsTo(Project, { foreignKey: "project_id" });
-Project.hasMany(Employee, { foreignKey: "project_id" });
 
 Employee.belongsTo(User, { foreignKey: "deleted_by"});
 User.hasMany(Employee, { foreignKey: "deleted_by" });

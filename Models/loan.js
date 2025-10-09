@@ -10,9 +10,17 @@ const Loan = sequelize.define(
       autoIncrement: true,
       primaryKey: true,
     },
-    borrower_name: {
+    to_who: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "employees",
+        key: "employee_id",
+      },
+    },
+    from_whom: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     amount: {
       type: DataTypes.DECIMAL,
@@ -26,14 +34,25 @@ const Loan = sequelize.define(
       type: DataTypes.DATE,
       allowNull: false,
     },
-    end_date: {
+    expected_end_date: {
       type: DataTypes.DATE,
       allowNull: false,
     },
-    status: {
-      type: DataTypes.ENUM("Pending", "Approved", "Rejected", "Paid"),
+    purpose: {
+      type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "Pending",
+    },
+    penalty: {
+      type: DataTypes.DECIMAL,
+      allowNull: true,
+    },
+    status: {
+      type: DataTypes.ENUM("Given", "Returned"),
+      allowNull: false,
+    },
+    receipt: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     is_deleted: {
       type: DataTypes.BOOLEAN,
@@ -60,7 +79,7 @@ const Loan = sequelize.define(
   }
 );
 
-Loan.belongsTo(User, { foreignKey: "deleted_by"});
+Loan.belongsTo(User, { foreignKey: "deleted_by" });
 User.hasMany(Loan, { foreignKey: "deleted_by" });
 
 export default Loan;
