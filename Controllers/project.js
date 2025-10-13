@@ -3,7 +3,7 @@ import ProjectEmployee from "../Models/project_employee.js";
 
 export const createProject = async (req, res) => {
   try {
-    const { project_name, start_date, end_date, budget, actual_cost, status } =
+    const { project_name, start_date, end_date, budget, status } =
       req.body;
 
     // validation
@@ -32,7 +32,6 @@ export const createProject = async (req, res) => {
       start_date,
       end_date,
       budget,
-      actual_cost: actual_cost || 0,
       status,
     });
 
@@ -116,7 +115,7 @@ export const getAllProjects = async (req, res) => {
 export const updateProject = async (req, res) => {
   try {
     const { id } = req.params;
-    const { project_name, start_date, end_date, status, budget, actual_cost } =
+    const { project_name, start_date, end_date, status, budget, } =
       req.body;
 
     if (Object.keys(req.body).length === 0) {
@@ -161,7 +160,6 @@ export const updateProject = async (req, res) => {
     if (start_date) to_update.start_date = start_date;
     if (end_date) to_update.end_date = end_date;
     if (budget) to_update.budget = budget;
-    if (actual_cost) to_update.actual_cost = actual_cost;
 
     await project.update(to_update);
 

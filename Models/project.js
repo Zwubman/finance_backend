@@ -27,35 +27,6 @@ const Project = sequelize.define(
       type: DataTypes.DECIMAL,
       allowNull: false,
     },
-    actual_cost: {
-      type: DataTypes.DECIMAL,
-      allowNull: true,
-      defaultValue: 0,
-    },
-    employee_salary_cost: {
-      type: DataTypes.DECIMAL,
-      defaultValue: 0,
-    },
-    requirement_gathering_cost: {
-      type: DataTypes.DECIMAL,
-      defaultValue: 0,
-    },
-    allowance_cost: {
-      type: DataTypes.DECIMAL,
-      defaultValue: 0,
-    },
-    purchase_cost: {
-      type: DataTypes.DECIMAL,
-      defaultValue: 0,
-    },
-    advisor_cost: {
-      type: DataTypes.DECIMAL,
-      defaultValue: 0,
-    },
-    total_estimated_cost: {
-      type: DataTypes.DECIMAL,
-      defaultValue: 0,
-    },
     status: {
       type: DataTypes.ENUM("Planned", "In Progress", "Completed", "On Hold"),
       allowNull: false,
