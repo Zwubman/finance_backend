@@ -58,8 +58,8 @@ export const createProjectCost = async (req, res) => {
 
 export const getProjectCostByProjectId = async (req, res) => {
   try {
-    const { id } = req.params;
-    const project_cost = await ProjectCost.findOne({
+    const id = req.params.id;
+    const project_cost = await ProjectCost.findAll({
       where: { project_id: id, is_deleted: false },
     });
 
@@ -78,6 +78,34 @@ export const getProjectCostByProjectId = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in get project cost by project id:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Server Error", Error: error.message });
+  }
+};
+
+export const getProjectCostById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const project_cost = await ProjectCost.findOne({
+      where: { project_cost_id: id, is_deleted: false },
+    });
+
+    if (!project_cost) {
+      return res.status(404).json({
+        success: false,
+        message: "Project cost not found",
+        data: null,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Project cost retrieved successfully",
+      data: project_cost,
+    });
+  } catch (error) {
+    console.error("Error in get project cost by id:", error);
     return res
       .status(500)
       .json({ success: false, message: "Server Error", Error: error.message });
