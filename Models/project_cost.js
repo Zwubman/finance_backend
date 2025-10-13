@@ -47,6 +47,10 @@ const ProjectCost = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    receipt: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     total_cost: {
       type: DataTypes.DECIMAL,
       defaultValue: 0,

@@ -1,13 +1,21 @@
+import Employee from "../Models/employee.js";
 import Project from "../Models/project.js";
 import ProjectEmployee from "../Models/project_employee.js";
+import ProjectCost from "../Models/project_cost.js";
 
 export const createProject = async (req, res) => {
   try {
-    const { project_name, start_date, end_date, budget, status } =
-      req.body;
+    const {
+      project_name,
+      start_date,
+      expected_end_date,
+      budget,
+      status,
+      employee_id,
+    } = req.body;
 
-    // validation
-    if (!project_name || !start_date || !end_date || !budget) {
+    // Validation
+    if (!project_name || !start_date || !expected_end_date || !budget) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
@@ -15,47 +23,83 @@ export const createProject = async (req, res) => {
       });
     }
 
-    if (status) {
-      if (
-        !["Planned", "In Progress", "Completed", "On Hold"].includes(status)
-      ) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid status",
-          data: null,
-        });
-      }
+    if (
+      status &&
+      !["Planned", "In Progress", "Completed", "On Hold"].includes(status)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status",
+        data: null,
+      });
     }
 
+    // Create the project
     const project = await Project.create({
       project_name,
       start_date,
-      end_date,
+      expected_end_date,
       budget,
       status,
     });
 
-    const employees = req.body.employee_id || []
-    const project_employees_data = employees.map((employee_id, index) => ({
+    // Assign employees to the project
+    const employees = employee_id || [];
+    const project_employees_data = employees.map((emp_id) => ({
       project_id: project.project_id,
-      employee_id,
-    }))
+      employee_id: emp_id,
+    }));
 
-    let project_employees = []
-    if(project_employees_data.length > 0){
-      project_employees = await ProjectEmployee.bulkCreate(project_employees_data)
+    let project_employees = [];
+    if (project_employees_data.length > 0) {
+      project_employees = await ProjectEmployee.bulkCreate(
+        project_employees_data
+      );
     }
+
+    // Calculate total days between start and expected end date
+    const startDate = new Date(start_date);
+    const endDate = new Date(expected_end_date);
+    const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+
+    // Fetch employees with their salaries
+    const assignedEmployees = await Employee.findAll({
+      where: { employee_id: employees },
+      attributes: ["employee_id", "salary"],
+    });
+
+    // Calculate total employee salary cost
+    let totalEmployeeSalaryCost = 0;
+
+    for (const emp of assignedEmployees) {
+      const dailySalary = emp.salary / 30;
+      const totalSalaryCost = dailySalary * totalDays;
+      totalEmployeeSalaryCost += totalSalaryCost;
+    }
+
+    // Create a single record in ProjectCost
+    const project_cost = await ProjectCost.create({
+      project_id: project.project_id,
+      employee_salary_cost: totalEmployeeSalaryCost.toFixed(2),
+      // total_cost: totalEmployeeSalaryCost.toFixed(2),
+    });
 
     return res.status(201).json({
       success: true,
-      message: "Project created successfully and assigned to employees",
-      data: {project, project_employees},
+      message: "Project created successfully with total employee salary cost",
+      data: {
+        project,
+        project_employees,
+        project_cost,
+      },
     });
   } catch (error) {
-    console.error("Error in create project:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Server Error", Error: error.message });
+    console.error("Error in createProject:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+      Error: error.message,
+    });
   }
 };
 
@@ -115,7 +159,7 @@ export const getAllProjects = async (req, res) => {
 export const updateProject = async (req, res) => {
   try {
     const { id } = req.params;
-    const { project_name, start_date, end_date, status, budget, } =
+    const { project_name, start_date, expected_end_date, status, budget } =
       req.body;
 
     if (Object.keys(req.body).length === 0) {
@@ -158,7 +202,7 @@ export const updateProject = async (req, res) => {
 
     if (project_name) to_update.project_name = project_name;
     if (start_date) to_update.start_date = start_date;
-    if (end_date) to_update.end_date = end_date;
+    if (expected_end_date) to_update.expected_end_date = expected_end_date;
     if (budget) to_update.budget = budget;
 
     await project.update(to_update);
