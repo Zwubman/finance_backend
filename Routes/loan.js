@@ -7,13 +7,14 @@ import {
   deleteLoan,
   updateLoanStatus,
 } from "../Controllers/loan.js";
+import upload from "../Middlewares/upload.js";
 
 const router = express.Router();
 
-router.post("/", createLoan);
+router.post("/", upload.single("receipt"), createLoan);
 router.get("/", getAllLoans);
 router.get("/:id", getLoanById);
-router.put("/:id", updateLoan);
+router.put("/:id", upload.single("receipt"), updateLoan);
 router.patch("/update-status/:id", updateLoanStatus);
 router.delete("/:id", deleteLoan);
 

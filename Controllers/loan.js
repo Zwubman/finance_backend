@@ -4,6 +4,7 @@ import Expense from "../Models/expense.js";
 import Income from "../Models/income.js";
 import Employee from "../Models/employee.js";
 import BankAccount from "../Models/bank_account.js";
+import fs from "fs";
 
 export const createLoan = async (req, res) => {
   try {
@@ -120,10 +121,18 @@ export const createLoan = async (req, res) => {
         data: null,
       });
     }
+    let receipt = null;
+    if (req.file) {
+      receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
+        /\\/g,
+        "/"
+      )}`;
+    }
 
     const loan = await Loan.create({
       to_who,
       from_whom,
+      receipt,
       amount,
       interest_rate,
       start_date,
@@ -282,8 +291,6 @@ export const updateLoan = async (req, res) => {
       },
     });
 
-    const to_update = {};
-
     if (!loan) {
       return res.status(404).json({
         success: false,
@@ -291,6 +298,28 @@ export const updateLoan = async (req, res) => {
         data: null,
       });
     }
+
+    if (req.file && req.file.path) {
+      // Delete old local image
+      if (loan.receipt) {
+        const oldPath = loan.receipt.replace(
+          `${req.protocol}://${req.get("host")}/`,
+          ""
+        );
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
+
+      // Assign new image URL from multer
+      loan.receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
+        /\\/g,
+        "/"
+      )}`;
+      await loan.save();
+    }
+
+    const to_update = {};
 
     if (start_date) to_update.start_date = start_date;
     if (end_date) to_update.end_date = end_date;
@@ -308,7 +337,7 @@ export const updateLoan = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Loan updated successfully",
-      data: to_update,
+      data: loan,
     });
   } catch (error) {
     console.error(error);
