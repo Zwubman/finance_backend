@@ -1,6 +1,7 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../Config/database.js";
 import User from "./user.js";
+import Employee from "./employee.js";
 
 const Loan = sequelize.define(
   "loan",
@@ -18,7 +19,7 @@ const Loan = sequelize.define(
         key: "employee_id",
       },
     },
-    from_whom: {
+    from_whom: { // bank name who provide the loan to our company
       type: DataTypes.STRING,
       allowNull: true,
     },
@@ -34,7 +35,7 @@ const Loan = sequelize.define(
       type: DataTypes.DATE,
       allowNull: false,
     },
-    expected_end_date: {
+    end_date: {
       type: DataTypes.DATE,
       allowNull: false,
     },
@@ -47,7 +48,7 @@ const Loan = sequelize.define(
       allowNull: true,
     },
     status: {
-      type: DataTypes.ENUM("Given", "Returned"),
+      type: DataTypes.ENUM("Given", "Received", "Returned"),
       allowNull: false,
     },
     receipt: {
@@ -78,6 +79,9 @@ const Loan = sequelize.define(
     freezeTableName: true,
   }
 );
+
+Loan.belongsTo(Employee, { foreignKey: "to_who", as: "borrower" });
+Employee.hasMany(Loan, { foreignKey: "to_who" });
 
 Loan.belongsTo(User, { foreignKey: "deleted_by" });
 User.hasMany(Loan, { foreignKey: "deleted_by" });

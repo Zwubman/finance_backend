@@ -10,6 +10,7 @@ export const createProject = async (req, res) => {
       start_date,
       expected_end_date,
       budget,
+      total_estimated_cost,
       status,
       employee_id,
     } = req.body;
@@ -39,7 +40,6 @@ export const createProject = async (req, res) => {
       project_name,
       start_date,
       expected_end_date,
-      budget,
       status,
     });
 
@@ -57,31 +57,11 @@ export const createProject = async (req, res) => {
       );
     }
 
-    // Calculate total days between start and expected end date
-    const startDate = new Date(start_date);
-    const endDate = new Date(expected_end_date);
-    const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-
-    // Fetch employees with their salaries
-    const assignedEmployees = await Employee.findAll({
-      where: { employee_id: employees },
-      attributes: ["employee_id", "salary"],
-    });
-
-    // Calculate total employee salary cost
-    let totalEmployeeSalaryCost = 0;
-
-    for (const emp of assignedEmployees) {
-      const dailySalary = emp.salary / 30;
-      const totalSalaryCost = dailySalary * totalDays;
-      totalEmployeeSalaryCost += totalSalaryCost;
-    }
-
-    // Create a single record in ProjectCost
     const project_cost = await ProjectCost.create({
       project_id: project.project_id,
-      employee_salary_cost: totalEmployeeSalaryCost.toFixed(2),
-      // total_cost: totalEmployeeSalaryCost.toFixed(2),
+      total_estimated_cost: total_estimated_cost || 0,
+      budget: budget || 0,
+      actual_cost: 0,
     });
 
     return res.status(201).json({
@@ -90,7 +70,6 @@ export const createProject = async (req, res) => {
       data: {
         project,
         project_employees,
-        project_cost,
       },
     });
   } catch (error) {
@@ -159,7 +138,7 @@ export const getAllProjects = async (req, res) => {
 export const updateProject = async (req, res) => {
   try {
     const { id } = req.params;
-    const { project_name, start_date, expected_end_date, status, budget } =
+    const { project_name, start_date, expected_end_date, ended_at, status, budget } =
       req.body;
 
     if (Object.keys(req.body).length === 0) {
@@ -203,7 +182,7 @@ export const updateProject = async (req, res) => {
     if (project_name) to_update.project_name = project_name;
     if (start_date) to_update.start_date = start_date;
     if (expected_end_date) to_update.expected_end_date = expected_end_date;
-    if (budget) to_update.budget = budget;
+    if (ended_at) to_update.ended_at = ended_at;
 
     await project.update(to_update);
 

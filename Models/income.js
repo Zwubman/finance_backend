@@ -28,6 +28,10 @@ const Income = sequelize.define(
       ),
       allowNull: false,
     },
+    specific_source: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     amount: {
       type: DataTypes.DECIMAL,
       allowNull: false,

@@ -23,9 +23,9 @@ const Project = sequelize.define(
       type: DataTypes.DATE,
       allowNull: false,
     },
-    budget: {
-      type: DataTypes.DECIMAL,
-      allowNull: false,
+    completed_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     status: {
       type: DataTypes.ENUM("Planned", "In Progress", "Completed", "On Hold"),

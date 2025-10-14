@@ -1,5 +1,6 @@
 import Project from "../Models/project.js";
 import ProjectCost from "../Models/project_cost.js";
+import { Op } from "sequelize";
 
 export const createProjectCost = async (req, res) => {
   try {
@@ -10,8 +11,9 @@ export const createProjectCost = async (req, res) => {
       advisor_cost,
       other_cost,
       description_for_other_cost,
+      total_estimated_cost,
+      project_id,
     } = req.body;
-    const project_id = req.params.id;
 
     if (other_cost) {
       if (!description_for_other_cost) {
@@ -41,11 +43,45 @@ export const createProjectCost = async (req, res) => {
       advisor_cost,
       other_cost,
       description_for_other_cost,
+      total_estimated_cost,
     });
+
+    const existingCost = await ProjectCost.findOne({
+      where: {
+        project_id,
+        actual_cost: { [Op.ne]: null },
+        is_deleted: false,
+      },
+    });
+
+    if (existingCost) {
+      // Convert everything to numbers safely
+      const currentActual = Number(existingCost.actual_cost) || 0;
+      const reqCost = Number(requirement_gathering_cost) || 0;
+      const allowance = Number(allowance_cost) || 0;
+      const purchase = Number(purchase_cost) || 0;
+      const advisor = Number(advisor_cost) || 0;
+      const other = Number(other_cost) || 0;
+
+      const new_actual_cost =
+        currentActual + reqCost + allowance + purchase + advisor + other;
+
+      existingCost.actual_cost = new_actual_cost;
+      await existingCost.save();
+
+      return res.status(201).json({
+        success: true,
+        message: "Project cost created successfully and actual cost updated",
+        data: {
+          project_cost,
+          existingCost,
+        },
+      });
+    }
 
     return res.status(201).json({
       success: true,
-      message: "Project cost created successfully",
+      message: "Project cost created successfully and actual cost updated",
       data: project_cost,
     });
   } catch (error) {
@@ -163,7 +199,35 @@ export const updateProjectCost = async (req, res) => {
       });
     }
 
-    if (other_cost !== undefined) {
+    const project = await Project.findOne({
+      where: {
+        project_id: project_cost.project_id,
+        is_deleted: false,
+      },
+    });
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "Associated project not found",
+        data: null,
+      });
+    }
+
+    const existingCosts = await ProjectCost.findOne({where: {
+      project_id: project.project_id,
+      is_deleted: false,
+      actual_cost: { [Op.ne]: null },
+    }});
+
+    if (!existingCosts) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot update costs as no actual cost record exists for the project",
+        data: null,
+      });
+    }
+
+    if (other_cost !== null && other_cost !== undefined) {
       if (other_cost && !description_for_other_cost) {
         return res.status(400).json({
           success: false,
@@ -176,12 +240,31 @@ export const updateProjectCost = async (req, res) => {
 
     const to_update = {};
 
-    if (requirement_gathering_cost)
+    if (requirement_gathering_cost){
+      existingCosts.actual_cost = existingCosts.actual_cost - (project_cost.requirement_gathering_cost || 0) + requirement_gathering_cost;
+      await existingCosts.save();
       to_update.requirement_gathering_cost = requirement_gathering_cost;
-    if (allowance_cost) to_update.allowance_cost = allowance_cost;
-    if (purchase_cost) to_update.purchase_cost = purchase_cost;
-    if (advisor_cost) to_update.advisor_cost = advisor_cost;
-    if (other_cost !== undefined) to_update.other_cost = other_cost;
+    }
+    if (allowance_cost){
+      existingCosts.actual_cost = existingCosts.actual_cost - (project_cost.allowance_cost || 0) + allowance_cost;
+      await existingCosts.save();
+      to_update.allowance_cost = allowance_cost;
+    }
+    if (purchase_cost){
+      existingCosts.actual_cost = existingCosts.actual_cost - (project_cost.purchase_cost || 0) + purchase_cost;
+      await existingCosts.save();
+      to_update.purchase_cost = purchase_cost;
+    }
+    if (advisor_cost){
+      existingCosts.actual_cost = existingCosts.actual_cost - (project_cost.advisor_cost || 0) + advisor_cost;
+      await existingCosts.save();
+      to_update.advisor_cost = advisor_cost;
+    }
+    if (other_cost !== null && other_cost !== undefined){
+      existingCosts.actual_cost = existingCosts.actual_cost - (project_cost.other_cost || 0) + other_cost;
+      await existingCosts.save();
+      to_update.other_cost = other_cost;
+    }
     if (description_for_other_cost)
       to_update.description_for_other_cost = description_for_other_cost;
 
@@ -190,7 +273,7 @@ export const updateProjectCost = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Project cost updated successfully",
-      data: project_cost,
+      data: { project_cost, existingCosts },
     });
   } catch (error) {
     console.error("Error in update project cost:", error);

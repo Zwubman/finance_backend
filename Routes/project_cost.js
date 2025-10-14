@@ -10,7 +10,7 @@ import {
 
 const router = express.Router();
 
-router.post("/:id", createProjectCost);
+router.post("/", createProjectCost);
 router.get("/", getAllProjectCosts);
 router.get("/:id", getProjectCostByProjectId);
 router.get("/detail/:id", getProjectCostById);

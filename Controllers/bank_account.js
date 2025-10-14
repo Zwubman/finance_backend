@@ -1,4 +1,4 @@
-import BankAccount from "../Models/project.js";
+import BankAccount from "../Models/bank_account.js";
 
 export const createBankAccount = async (req, res) => {
   try {
@@ -135,7 +135,7 @@ export const updateBankAccount = async (req, res) => {
 
     const to_update = {};
 
-    if (!bankAccount) {
+    if (!bank_account) {
       return res.status(404).json({
         success: false,
         message: "Bank account not found",
@@ -179,7 +179,7 @@ export const deleteBankAccount = async (req, res) => {
       },
     });
 
-    if (!bankAccount) {
+    if (!bank_account) {
       return res.status(404).json({
         success: false,
         message: "Bank account not found",

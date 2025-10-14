@@ -23,7 +23,7 @@ const Expense = sequelize.define(
         "Travel & Miscellaneous",
         "Project expenses",
         "Expense for employee loan",
-        "Repaid for loan expense",
+        "Expense for repaying loan to bank",
         "Other"
       ),
       allowNull: false,
@@ -110,3 +110,4 @@ Expense.belongsTo(Loan, { foreignKey: "loan_id" });
 Loan.hasMany(Expense, { foreignKey: "loan_id" });
 
 export default Expense;
+
