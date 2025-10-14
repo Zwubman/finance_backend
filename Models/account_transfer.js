@@ -47,6 +47,10 @@ const AccountTransfer = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    receipt: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     is_deleted: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
@@ -74,10 +78,10 @@ const AccountTransfer = sequelize.define(
   }
 );
 
-BankAccount.hasMany(AccountTransfer, { foreignKey: "from_account" });
+BankAccount.hasMany(AccountTransfer, { foreignKey: "from_account", as: "from_account" });
 AccountTransfer.belongsTo(BankAccount, { foreignKey: "from_account" });
 
-BankAccount.hasMany(AccountTransfer, { foreignKey: "to_account" });
+BankAccount.hasMany(AccountTransfer, { foreignKey: "to_account", as: "to_account" });
 AccountTransfer.belongsTo(BankAccount, { foreignKey: "to_account" });
 
 AccountTransfer.belongsTo(User, { foreignKey: "deleted_by" });

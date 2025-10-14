@@ -121,6 +121,7 @@ export const createLoan = async (req, res) => {
         data: null,
       });
     }
+
     let receipt = null;
     if (req.file) {
       receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
