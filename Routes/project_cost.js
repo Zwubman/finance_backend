@@ -7,14 +7,15 @@ import {
   deleteProjectCost,
   getProjectCostById,
 } from "../Controllers/project_cost.js";
+import upload from "../Middlewares/upload.js";
 
 const router = express.Router();
 
-router.post("/", createProjectCost);
+router.post("/", upload.single("receipt"), createProjectCost);
+router.put("/:id", upload.single("receipt"), updateProjectCost);
 router.get("/", getAllProjectCosts);
 router.get("/:id", getProjectCostByProjectId);
 router.get("/detail/:id", getProjectCostById);
-router.put("/:id", updateProjectCost);
 router.delete("/:id", deleteProjectCost);
 
 export default router;

@@ -1,6 +1,7 @@
 import Project from "../Models/project.js";
 import ProjectCost from "../Models/project_cost.js";
 import { Op } from "sequelize";
+import fs from "fs";
 
 export const createProjectCost = async (req, res) => {
   try {
@@ -35,6 +36,14 @@ export const createProjectCost = async (req, res) => {
       });
     }
 
+    let receipt = null;
+    if (req.file) {
+      receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
+        /\\/g,
+        "/"
+      )}`;
+    }
+
     const project_cost = await ProjectCost.create({
       project_id,
       requirement_gathering_cost,
@@ -44,9 +53,10 @@ export const createProjectCost = async (req, res) => {
       other_cost,
       description_for_other_cost,
       total_estimated_cost,
+      receipt,
     });
 
-    const existingCost = await ProjectCost.findOne({
+    const existing_cost = await ProjectCost.findOne({
       where: {
         project_id,
         actual_cost: { [Op.ne]: null },
@@ -54,9 +64,9 @@ export const createProjectCost = async (req, res) => {
       },
     });
 
-    if (existingCost) {
+    if (existing_cost) {
       // Convert everything to numbers safely
-      const currentActual = Number(existingCost.actual_cost) || 0;
+      const currentActual = Number(existing_cost.actual_cost) || 0;
       const reqCost = Number(requirement_gathering_cost) || 0;
       const allowance = Number(allowance_cost) || 0;
       const purchase = Number(purchase_cost) || 0;
@@ -66,15 +76,15 @@ export const createProjectCost = async (req, res) => {
       const new_actual_cost =
         currentActual + reqCost + allowance + purchase + advisor + other;
 
-      existingCost.actual_cost = new_actual_cost;
-      await existingCost.save();
+      existing_cost.actual_cost = new_actual_cost;
+      await existing_cost.save();
 
       return res.status(201).json({
         success: true,
         message: "Project cost created successfully and actual cost updated",
         data: {
           project_cost,
-          existingCost,
+          existing_cost,
         },
       });
     }
@@ -213,16 +223,19 @@ export const updateProjectCost = async (req, res) => {
       });
     }
 
-    const existingCosts = await ProjectCost.findOne({where: {
-      project_id: project.project_id,
-      is_deleted: false,
-      actual_cost: { [Op.ne]: null },
-    }});
+    const existing_costs = await ProjectCost.findOne({
+      where: {
+        project_id: project.project_id,
+        is_deleted: false,
+        actual_cost: { [Op.ne]: null },
+      },
+    });
 
-    if (!existingCosts) {
+    if (!existing_costs) {
       return res.status(400).json({
         success: false,
-        message: "Cannot update costs as no actual cost record exists for the project",
+        message:
+          "Cannot update costs as no actual cost record exists for the project",
         data: null,
       });
     }
@@ -238,31 +251,63 @@ export const updateProjectCost = async (req, res) => {
       }
     }
 
+    if (req.file && req.file.path) {
+      // Delete old local image
+      if (project_cost.receipt) {
+        const oldPath = project_cost.receipt.replace(
+          `${req.protocol}://${req.get("host")}/`,
+          ""
+        );
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
+
+      // Assign new image URL from multer
+      project_cost.receipt = `${req.protocol}://${req.get(
+        "host"
+      )}/${req.file.path.replace(/\\/g, "/")}`;
+      await project_cost.save();
+    }
+
     const to_update = {};
 
-    if (requirement_gathering_cost){
-      existingCosts.actual_cost = existingCosts.actual_cost - (project_cost.requirement_gathering_cost || 0) + requirement_gathering_cost;
-      await existingCosts.save();
+    if (requirement_gathering_cost) {
+      existing_costs.actual_cost =
+        existing_costs.actual_cost -
+        (project_cost.requirement_gathering_cost || 0) +
+        requirement_gathering_cost;
+      await existing_costs.save();
       to_update.requirement_gathering_cost = requirement_gathering_cost;
     }
-    if (allowance_cost){
-      existingCosts.actual_cost = existingCosts.actual_cost - (project_cost.allowance_cost || 0) + allowance_cost;
-      await existingCosts.save();
+    if (allowance_cost) {
+      existing_costs.actual_cost =
+        existing_costs.actual_cost -
+        (project_cost.allowance_cost || 0) +
+        allowance_cost;
+      await existing_costs.save();
       to_update.allowance_cost = allowance_cost;
     }
-    if (purchase_cost){
-      existingCosts.actual_cost = existingCosts.actual_cost - (project_cost.purchase_cost || 0) + purchase_cost;
-      await existingCosts.save();
+    if (purchase_cost) {
+      existing_costs.actual_cost =
+        existing_costs.actual_cost -
+        (project_cost.purchase_cost || 0) +
+        purchase_cost;
+      await existing_costs.save();
       to_update.purchase_cost = purchase_cost;
     }
-    if (advisor_cost){
-      existingCosts.actual_cost = existingCosts.actual_cost - (project_cost.advisor_cost || 0) + advisor_cost;
-      await existingCosts.save();
+    if (advisor_cost) {
+      existing_costs.actual_cost =
+        existing_costs.actual_cost -
+        (project_cost.advisor_cost || 0) +
+        advisor_cost;
+      await existing_costs.save();
       to_update.advisor_cost = advisor_cost;
     }
-    if (other_cost !== null && other_cost !== undefined){
-      existingCosts.actual_cost = existingCosts.actual_cost - (project_cost.other_cost || 0) + other_cost;
-      await existingCosts.save();
+    if (other_cost !== null && other_cost !== undefined) {
+      existing_costs.actual_cost =
+        existing_costs.actual_cost - (project_cost.other_cost || 0) + other_cost;
+      await existing_costs.save();
       to_update.other_cost = other_cost;
     }
     if (description_for_other_cost)
@@ -273,7 +318,7 @@ export const updateProjectCost = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Project cost updated successfully",
-      data: { project_cost, existingCosts },
+      data: { project_cost, existing_costs },
     });
   } catch (error) {
     console.error("Error in update project cost:", error);

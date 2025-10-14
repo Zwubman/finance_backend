@@ -312,10 +312,9 @@ export const updateLoan = async (req, res) => {
       }
 
       // Assign new image URL from multer
-      loan.receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
-        /\\/g,
-        "/"
-      )}`;
+      loan.receipt = `${req.protocol}://${req.get(
+        "host"
+      )}/${req.file.path.replace(/\\/g, "/")}`;
       await loan.save();
     }
 
