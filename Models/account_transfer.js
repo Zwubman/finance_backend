@@ -78,13 +78,14 @@ const AccountTransfer = sequelize.define(
   }
 );
 
-BankAccount.hasMany(AccountTransfer, { foreignKey: "from_account", as: "from_account" });
-AccountTransfer.belongsTo(BankAccount, { foreignKey: "from_account" });
+BankAccount.hasMany(AccountTransfer, { foreignKey: "from_account", as: "from_acc" });
+AccountTransfer.belongsTo(BankAccount, { foreignKey: "from_account", as: "from_acc" });
 
-BankAccount.hasMany(AccountTransfer, { foreignKey: "to_account", as: "to_account" });
-AccountTransfer.belongsTo(BankAccount, { foreignKey: "to_account" });
+BankAccount.hasMany(AccountTransfer, { foreignKey: "to_account", as: "to_acc" });
+AccountTransfer.belongsTo(BankAccount, { foreignKey: "to_account", as: "to_acc" });
 
-AccountTransfer.belongsTo(User, { foreignKey: "deleted_by" });
-User.hasMany(AccountTransfer, { foreignKey: "deleted_by" });
+AccountTransfer.belongsTo(User, { foreignKey: "deleted_by", as: "deleted_by_user" });
+User.hasMany(AccountTransfer, { foreignKey: "deleted_by", as: "deleted_transfers" });
+
 
 export default AccountTransfer;

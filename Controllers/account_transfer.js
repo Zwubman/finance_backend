@@ -1,8 +1,12 @@
+import sequelize from "../Config/database.js";
 import BankAccount from "../Models/bank_account.js";
 import AccountTransfer from "../Models/account_transfer.js";
 import fs from "fs";
 
+
 export const createAccountTransfer = async (req, res) => {
+  const t = await sequelize.transaction(); // Start a transaction
+
   try {
     const {
       from_account,
@@ -13,7 +17,7 @@ export const createAccountTransfer = async (req, res) => {
       purpose,
     } = req.body;
 
-    // Validate input
+    // Validate required fields
     if (!from_account || !to_account || !amount || !transfer_date) {
       return res.status(400).json({
         success: false,
@@ -30,14 +34,19 @@ export const createAccountTransfer = async (req, res) => {
       });
     }
 
-    const from_accounts = await BankAccount.findOne({
-      where: { id: from_account, is_deleted: false },
-    });
-    const to_accounts = await BankAccount.findOne({
-      where: { id: to_account, is_deleted: false },
+    // Fetch accounts
+    const fromAcc = await BankAccount.findOne({
+      where: { account_id: from_account, is_deleted: false },
+      transaction: t,
     });
 
-    if (!from_accounts || !to_accounts) {
+    const toAcc = await BankAccount.findOne({
+      where: { account_id: to_account, is_deleted: false },
+      transaction: t,
+    });
+
+    if (!fromAcc || !toAcc) {
+      await t.rollback();
       return res.status(404).json({
         success: false,
         message: "One or both bank accounts not found",
@@ -45,7 +54,11 @@ export const createAccountTransfer = async (req, res) => {
       });
     }
 
-    if (from_accounts.balance < amount) {
+    const fromBalance = parseFloat(fromAcc.balance);
+    const transferAmount = parseFloat(amount);
+
+    if (fromBalance < transferAmount) {
+      await t.rollback();
       return res.status(400).json({
         success: false,
         message: "Insufficient balance in the from account",
@@ -53,7 +66,7 @@ export const createAccountTransfer = async (req, res) => {
       });
     }
 
-     let receipt = null;
+    let receipt = null;
     if (req.file) {
       receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
         /\\/g,
@@ -61,22 +74,28 @@ export const createAccountTransfer = async (req, res) => {
       )}`;
     }
 
-    const transfer = await AccountTransfer.create({
-      from_account: from_accounts.id,
-      to_account: to_accounts.id,
-      amount,
-      description,
-      transfer_date,
-      purpose,
-      receipt,
-    });
+    // Create transfer record
+    const transfer = await AccountTransfer.create(
+      {
+        from_account: fromAcc.account_id,
+        to_account: toAcc.account_id,
+        amount: transferAmount,
+        description,
+        transfer_date,
+        purpose,
+        receipt,
+      },
+      { transaction: t }
+    );
 
-    // Update account balances
-    from_accounts.balance -= amount;
-    to_accounts.balance += amount;
+    // Update balances
+    fromAcc.balance = fromBalance - transferAmount;
+    toAcc.balance = parseFloat(toAcc.balance) + transferAmount;
 
-    await from_accounts.save();
-    await to_accounts.save();
+    await fromAcc.save({ transaction: t });
+    await toAcc.save({ transaction: t });
+
+    await t.commit();
 
     return res.status(201).json({
       success: true,
@@ -84,7 +103,8 @@ export const createAccountTransfer = async (req, res) => {
       data: transfer,
     });
   } catch (error) {
-    console.error(error);
+    await t.rollback();
+    console.error("Error creating account transfer:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -93,13 +113,14 @@ export const createAccountTransfer = async (req, res) => {
   }
 };
 
+
 export const getAllAccountTransfers = async (req, res) => {
   try {
     const transfers = await AccountTransfer.findAll({
       where: { is_deleted: false },
       include: [
-        { model: BankAccount, as: "from_account" },
-        { model: BankAccount, as: "to_account" },
+        { model: BankAccount, as: "from_acc" },
+        { model: BankAccount, as: "to_acc" },
       ],
       order: [["createdAt", "DESC"]],
     });
@@ -124,10 +145,10 @@ export const getAccountTransferById = async (req, res) => {
     const { id } = req.params;
 
     const transfer = await AccountTransfer.findOne({
-      where: { id, is_deleted: false },
+      where: { transfer_id: id, is_deleted: false },
       include: [
-        { model: BankAccount, as: "from_account" },
-        { model: BankAccount, as: "to_account" },
+        { model: BankAccount, as: "from_acc" },
+        { model: BankAccount, as: "to_acc" },
       ],
     });
 
@@ -175,7 +196,7 @@ export const updateAccountTransfer = async (req, res) => {
     }
 
     const transfer = await AccountTransfer.findOne({
-      where: { id, is_deleted: false },
+      where: { transfer_id: id, is_deleted: false },
     });
 
     if (!transfer) {
@@ -216,24 +237,24 @@ export const updateAccountTransfer = async (req, res) => {
       }
     }
 
-     if (req.file && req.file.path) {
-          // Delete old local image
-          if (AccountTransfer.receipt) {
-            const oldPath = AccountTransfer.receipt.replace(
-              `${req.protocol}://${req.get("host")}/`,
-              ""
-            );
-            if (fs.existsSync(oldPath)) {
-              fs.unlinkSync(oldPath);
-            }
-          }
-    
-          // Assign new image URL from multer
-          AccountTransfer.receipt = `${req.protocol}://${req.get(
-            "host"
-          )}/${req.file.path.replace(/\\/g, "/")}`;
-          await AccountTransfer.save();
+    if (req.file && req.file.path) {
+      // Delete old local image
+      if (AccountTransfer.receipt) {
+        const oldPath = AccountTransfer.receipt.replace(
+          `${req.protocol}://${req.get("host")}/`,
+          ""
+        );
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
         }
+      }
+
+      // Assign new image URL from multer
+      AccountTransfer.receipt = `${req.protocol}://${req.get(
+        "host"
+      )}/${req.file.path.replace(/\\/g, "/")}`;
+      await AccountTransfer.save();
+    }
 
     const to_update = {};
 
@@ -266,7 +287,7 @@ export const deleteAccountTransfer = async (req, res) => {
     const { id } = req.params;
 
     const transfer = await AccountTransfer.findOne({
-      where: { id, is_deleted: false },
+      where: { transfer_id: id, is_deleted: false },
     });
 
     if (!transfer) {
