@@ -5,13 +5,11 @@ import projectRoutes from "./project.js";
 import loanRoutes from "./loan.js";
 import bankAccountRoutes from "./bank_account.js";
 import accountTransferRoutes from "./account_transfer.js";
-import projectCostRoutes from "./project_cost.js";
 
 const router = express.Router();
 
 router.use("/users", userRoutes);
 router.use("/employees", employeeRoutes);
-router.use("/project-costs", projectCostRoutes);
 router.use("/bank-accounts", bankAccountRoutes);
 router.use("/account-transfers", accountTransferRoutes);
 router.use("/projects", projectRoutes);
