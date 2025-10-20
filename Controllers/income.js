@@ -4,6 +4,9 @@ import Project from "../Models/project.js";
 import Loan from "../Models/loan.js";
 import fs from "fs";
 
+/**
+ * Create a new income
+ */
 export const createIncome = async (req, res) => {
   try {
     const {
@@ -107,6 +110,9 @@ export const createIncome = async (req, res) => {
   }
 };
 
+/**
+ * Get all incomes
+ */
 export const getAllIncomes = async (req, res) => {
   try {
     const incomes = await Income.findAll({
@@ -142,6 +148,9 @@ export const getAllIncomes = async (req, res) => {
   }
 };
 
+/**
+ * Get income by ID
+ */
 export const getIncomeById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -186,6 +195,9 @@ export const getIncomeById = async (req, res) => {
   }
 };
 
+/**
+ * Update income 
+ */
 export const updateIncome = async (req, res) => {
   try {
     const { id } = req.params;
@@ -314,6 +326,9 @@ export const updateIncome = async (req, res) => {
   }
 };
 
+/**
+ * Delete income record (soft delete)
+ */
 export const deleteIncome = async (req, res) => {
   try {
     const { id } = req.params;

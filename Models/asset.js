@@ -18,11 +18,28 @@ const Asset = sequelize.define(
       type: DataTypes.ENUM("Electronics", "Furniture", "Vehicle", "Other"),
       allowNull: false,
     },
-    purchase_date: {
-      type: DataTypes.DATE,
+    manual_category: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    quantity: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1,
+    },
+    transaction_type: {
+      type: DataTypes.ENUM("Bought", "Sold"),
       allowNull: false,
     },
-    cost: {
+    purchase_date: {
+      type: DataTypes.DATE,
+      allowNull: true, 
+    },
+    sold_date: {
+      type: DataTypes.DATE,
+      allowNull: true, 
+    },
+    price: {
       type: DataTypes.DECIMAL,
       allowNull: false,
     },
@@ -55,7 +72,7 @@ const Asset = sequelize.define(
   }
 );
 
-Asset.belongsTo(User, { foreignKey: "deleted_by"});
+Asset.belongsTo(User, { foreignKey: "deleted_by" });
 User.hasMany(Asset, { foreignKey: "deleted_by" });
 
 export default Asset;
