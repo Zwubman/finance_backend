@@ -2,6 +2,7 @@ import Income from "../Models/income.js";
 import BankAccount from "../Models/bank_account.js";
 import Project from "../Models/project.js";
 import Loan from "../Models/loan.js";
+import { Op } from "sequelize";
 import fs from "fs";
 
 /**
@@ -115,28 +116,51 @@ export const createIncome = async (req, res) => {
  */
 export const getAllIncomes = async (req, res) => {
   try {
-    const incomes = await Income.findAll({
-      where: { is_deleted: false },
+    const { page = 1, limit = 10, startDate, endDate } = req.query;
+    const offset = (page - 1) * limit;
+
+    // Build date filter
+    const dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter.received_date = { [Op.between]: [startDate, endDate] };
+    } else if (startDate) {
+      dateFilter.received_date = { [Op.gte]: startDate };
+    } else if (endDate) {
+      dateFilter.received_date = { [Op.lte]: endDate };
+    }
+
+    const { count, rows: incomes } = await Income.findAndCountAll({
+      where: {
+        is_deleted: false,
+        ...dateFilter,
+      },
       include: [
-        {
-          model: BankAccount,
-          as: "receiver",
-        },
-        {
-          model: Project,
-          as: "from_project",
-        },
-        {
-          model: Loan,
-          as: "from_loan",
-        },
+        { model: BankAccount, as: "receiver" },
+        { model: Project, as: "from_project" },
+        { model: Loan, as: "from_loan" },
       ],
       order: [["received_date", "DESC"]],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
     });
+
+    const total_income = await Income.sum("amount", {
+      where: {
+        is_deleted: false,
+      },
+    });
+
     return res.status(200).json({
       success: true,
       message: "Incomes retrieved successfully",
       data: incomes,
+      total_income: total_income || 0,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / limit),
+      },
     });
   } catch (error) {
     console.error("Error retrieving incomes:", error);
@@ -196,7 +220,7 @@ export const getIncomeById = async (req, res) => {
 };
 
 /**
- * Update income 
+ * Update income
  */
 export const updateIncome = async (req, res) => {
   try {

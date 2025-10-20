@@ -101,8 +101,24 @@ export const createExpense = async (req, res) => {
  */
 export const getAllExpenses = async (req, res) => {
   try {
-    const expenses = await Expense.findAll({
-      where: { is_deleted: false },
+    const { page = 1, limit = 10, startDate, endDate } = req.query;
+    const offset = (page - 1) * limit;
+
+    // Build date filter
+    const dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter.received_date = { [Op.between]: [startDate, endDate] };
+    } else if (startDate) {
+      dateFilter.received_date = { [Op.gte]: startDate };
+    } else if (endDate) {
+      dateFilter.received_date = { [Op.lte]: endDate };
+    }
+
+    const { count, rows: expenses } = await Expense.findAndCountAll({
+      where: {
+        is_deleted: false,
+        ...dateFilter,
+      },
       include: [
         {
           model: Project,
@@ -121,6 +137,8 @@ export const getAllExpenses = async (req, res) => {
         },
       ],
       order: [["expense_date", "DESC"]],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
     });
 
     if (expenses.length === 0) {
@@ -130,10 +148,24 @@ export const getAllExpenses = async (req, res) => {
         data: null,
       });
     }
+
+    const total_expense = await Expense.sum("amount", {
+      where: {
+        is_deleted: false,
+      },
+    });
+
     res.status(200).json({
       success: true,
       message: "Expenses retrieved successfully",
       data: expenses,
+      total_expense: total_expense || 0,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / limit),
+      },
     });
   } catch (error) {
     console.error("Error fetching expenses:", error);
@@ -285,13 +317,11 @@ export const deleteExpense = async (req, res) => {
       deleted_at: new Date(),
     });
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Expense deleted successfully",
-        data: null,
-      });
+    res.status(200).json({
+      success: true,
+      message: "Expense deleted successfully",
+      data: null,
+    });
   } catch (error) {
     console.error("Error deleting expense:", error);
     res
