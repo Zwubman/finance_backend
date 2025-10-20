@@ -100,13 +100,13 @@ const Income = sequelize.define(
 Income.belongsTo(User, { foreignKey: "deleted_by" });
 User.hasMany(Income, { foreignKey: "deleted_by" });
 
-Income.belongsTo(BankAccount, { foreignKey: "to_account" });
-BankAccount.hasMany(Income, { foreignKey: "to_account" });
+Income.belongsTo(BankAccount, { foreignKey: "to_account", as: "receiver" });
+BankAccount.hasMany(Income, { foreignKey: "to_account", as: "receiver" });
 
-Income.belongsTo(Project, { foreignKey: "project_id" });
-Project.hasMany(Income, { foreignKey: "project_id" });
+Income.belongsTo(Project, { foreignKey: "project_id", as: "from_project" });
+Project.hasMany(Income, { foreignKey: "project_id", as: "from_project" });
 
-Income.belongsTo(Loan, { foreignKey: "loan_id" });
-Loan.hasMany(Income, { foreignKey: "loan_id" });
+Income.belongsTo(Loan, { foreignKey: "loan_id", as : "from_loan" });
+Loan.hasMany(Income, { foreignKey: "loan_id", as: "from_loan" });
 
 export default Income;
