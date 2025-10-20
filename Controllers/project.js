@@ -1,6 +1,5 @@
 import Employee from "../Models/employee.js";
 import Project from "../Models/project.js";
-import ProjectEmployee from "../Models/project_employee.js";
 
 /**
  * Create a new project
@@ -52,13 +51,13 @@ export const createProject = async (req, res) => {
     });
 
     // Attach employees if provided
-    const employeeLinks = employee_id.map((emp_id) => ({
-      project_id: project.project_id,
-      employee_id: emp_id,
-    }));
-    if (employeeLinks.length > 0) {
-      await ProjectEmployee.bulkCreate(employeeLinks);
-    }
+    // const employeeLinks = employee_id.map((emp_id) => ({
+    //   project_id: project.project_id,
+    //   employee_id: emp_id,
+    // }));
+    // if (employeeLinks.length > 0) {
+    //   await ProjectEmployee.bulkCreate(employeeLinks);
+    // }
 
     return res.status(201).json({
       success: true,
@@ -82,12 +81,6 @@ export const getAllProjects = async (req, res) => {
   try {
     const projects = await Project.findAll({
       where: { is_deleted: false },
-      include: [
-        {
-          model: ProjectEmployee,
-          include: [{ model: Employee, attributes: ["employee_id", "first_name", "last_name"] }],
-        },
-      ],
     });
 
     res.status(200).json({
@@ -97,7 +90,9 @@ export const getAllProjects = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in getAllProjects:", error);
-    res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    res
+      .status(500)
+      .json({ success: false, message: "Server Error", error: error.message });
   }
 };
 
@@ -109,14 +104,6 @@ export const getProjectById = async (req, res) => {
     const { id } = req.params;
     const project = await Project.findOne({
       where: { project_id: id, is_deleted: false },
-      include: [
-        {
-          model: ProjectEmployee,
-          include: [
-            { model: Employee, attributes: ["employee_id", "first_name", "last_name", "email", "position", "salary"] },
-          ],
-        },
-      ],
     });
 
     if (!project) {
@@ -133,7 +120,9 @@ export const getProjectById = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in getProjectById:", error);
-    res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    res
+      .status(500)
+      .json({ success: false, message: "Server Error", error: error.message });
   }
 };
 
@@ -143,11 +132,23 @@ export const getProjectById = async (req, res) => {
 export const updateProject = async (req, res) => {
   try {
     const { id } = req.params;
-    const { project_name, start_date, expected_end_date, ended_at, status, budget, total_estimated_cost } = req.body;
+    const {
+      project_name,
+      start_date,
+      expected_end_date,
+      ended_at,
+      status,
+      budget,
+      total_estimated_cost,
+    } = req.body;
 
-    const project = await Project.findOne({ where: { project_id: id, is_deleted: false } });
+    const project = await Project.findOne({
+      where: { project_id: id, is_deleted: false },
+    });
     if (!project) {
-      return res.status(404).json({ success: false, message: "Project not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Project not found" });
     }
 
     const updateFields = {};
@@ -157,7 +158,8 @@ export const updateProject = async (req, res) => {
     if (ended_at) updateFields.ended_at = ended_at;
     if (status) updateFields.status = status;
     if (budget !== undefined) updateFields.budget = Number(budget);
-    if (total_estimated_cost !== undefined) updateFields.total_estimated_cost = Number(total_estimated_cost);
+    if (total_estimated_cost !== undefined)
+      updateFields.total_estimated_cost = Number(total_estimated_cost);
 
     await project.update(updateFields);
 
@@ -168,7 +170,9 @@ export const updateProject = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating project:", error);
-    res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    res
+      .status(500)
+      .json({ success: false, message: "Server Error", error: error.message });
   }
 };
 
@@ -178,10 +182,14 @@ export const updateProject = async (req, res) => {
 export const deleteProject = async (req, res) => {
   try {
     const { id } = req.params;
-    const project = await Project.findOne({ where: { project_id: id, is_deleted: false } });
+    const project = await Project.findOne({
+      where: { project_id: id, is_deleted: false },
+    });
 
     if (!project) {
-      return res.status(404).json({ success: false, message: "Project not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Project not found" });
     }
 
     await project.update({
@@ -190,10 +198,14 @@ export const deleteProject = async (req, res) => {
       deleted_at: new Date(),
     });
 
-    res.status(200).json({ success: true, message: "Project deleted successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "Project deleted successfully" });
   } catch (error) {
     console.error("Error deleting project:", error);
-    res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    res
+      .status(500)
+      .json({ success: false, message: "Server Error", error: error.message });
   }
 };
 
@@ -213,20 +225,34 @@ export const addProjectCostEntry = async (req, res) => {
       where: { project_id: id, is_deleted: false },
     });
     if (!project) {
-      return res.status(404).json({ success: false, message: "Project not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Project not found" });
     }
 
     // Correctly initialize structure
-    const current = project.actual_cost || { total_actual_cost: 0, cost_details: [] };
+    const current = project.actual_cost || {
+      total_actual_cost: 0,
+      cost_details: [],
+    };
     const details = Array.isArray(current.cost_details)
       ? [...current.cost_details]
       : [];
+
+    let receipt = null;
+    if (req.file) {
+      receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
+        /\\/g,
+        "/"
+      )}`;
+    }
 
     // Create a cost entry
     const entry = {
       reason,
       amount: Number(amount),
       date: date || new Date(),
+      receipt,
     };
 
     details.push(entry);
@@ -239,7 +265,7 @@ export const addProjectCostEntry = async (req, res) => {
     // Force Sequelize to see a new JSON reference
     project.set("actual_cost", updatedActualCost);
 
-    await project.save(); // ✅ Different from project.update()
+    await project.save(); // Different from project.update()
 
     return res.status(200).json({
       success: true,
@@ -264,19 +290,28 @@ export const addEmployeeToProject = async (req, res) => {
     const { id } = req.params;
     const { employee_id } = req.body;
 
-    const project = await Project.findOne({ where: { project_id: id, is_deleted: false } });
-    if (!project) return res.status(404).json({ success: false, message: "Project not found" });
+    const project = await Project.findOne({
+      where: { project_id: id, is_deleted: false },
+    });
+    if (!project)
+      return res
+        .status(404)
+        .json({ success: false, message: "Project not found" });
 
-    const employee = await Employee.findOne({ where: { employee_id, is_deleted: false } });
+    const employee = await Employee.findOne({
+      where: { employee_id, is_deleted: false },
+    });
     if (!employee)
-      return res.status(404).json({ success: false, message: "Employee not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Employee not found" });
 
     const assigned = new Set(project.assigned_to || []);
     assigned.add(Number(employee_id));
 
     await project.update({ assigned_to: [...assigned] });
 
-    await ProjectEmployee.findOrCreate({ where: { project_id: id, employee_id } });
+    // await ProjectEmployee.findOrCreate({ where: { project_id: id, employee_id } });
 
     res.status(200).json({
       success: true,
@@ -300,10 +335,17 @@ export const removeEmployeeFromProject = async (req, res) => {
   try {
     const { id, employeeId } = req.params;
 
-    const project = await Project.findOne({ where: { project_id: id, is_deleted: false } });
-    if (!project) return res.status(404).json({ success: false, message: "Project not found" });
+    const project = await Project.findOne({
+      where: { project_id: id, is_deleted: false },
+    });
+    if (!project)
+      return res
+        .status(404)
+        .json({ success: false, message: "Project not found" });
 
-    const updated = (project.assigned_to || []).filter((eid) => eid !== Number(employeeId));
+    const updated = (project.assigned_to || []).filter(
+      (eid) => eid !== Number(employeeId)
+    );
     await project.update({ assigned_to: updated });
 
     res.status(200).json({

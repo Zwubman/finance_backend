@@ -1,80 +1,73 @@
 import cron from "node-cron";
 import Project from "../Models/project.js";
-import ProjectEmployee from "../Models/project_employee.js";
 import Employee from "../Models/employee.js";
 import { Op } from "sequelize";
 
-// Run every day at 12:00 AM (midnight)
-cron.schedule("0 0 * * *", async ()  => {
+// Run every minute for testing (change to 0 0 * * * for daily)
+cron.schedule(
+  "0 0 * * *",
+  async () => {
     console.log("Running daily project cost update job...");
 
     try {
-      // Get all ongoing projects (not completed and not deleted)
-      const activeProjects = await Project.findAll({
+      // Fetch all ongoing projects
+      const active_projects = await Project.findAll({
         where: {
           completed_at: null,
           is_deleted: false,
         },
       });
 
-      for (const project of activeProjects) {
-        const projectId = project.project_id;
+      for (const project of active_projects) {
+        const assigned_employees = project.assigned_to || [];
 
-        // Get assigned employees for this project
-        const assignedEmployees = await ProjectEmployee.findAll({
-          where: { project_id: projectId },
-          include: [{ model: Employee, attributes: ["salary"] }],
+        if (assigned_employees.length === 0) continue;
+
+        // Fetch all assigned employees' salaries
+        const employees = await Employee.findAll({
+          where: { employee_id: { [Op.in]: assigned_employees } },
+          attributes: ["employee_id", "salary"],
         });
 
-        if (assignedEmployees.length === 0) continue;
-
-        // Calculate total daily salary cost
-        let totalDailyCost = 0;
-        for (const pe of assignedEmployees) {
-          const monthlySalary = pe.employee?.salary || 0;
-          totalDailyCost += monthlySalary / 30; 
-        }
-
-        const projectCost = await ProjectCost.findOne({
-          where: {
-            project_id: projectId,
-            is_deleted: false,
-            actual_cost: { [Op.ne]: null },
-          },
+        // Calculate total daily salary
+        let total_daily_cost = 0;
+        employees.forEach((emp) => {
+          const monthly_salary = emp.salary || 0;
+          total_daily_cost += monthly_salary / 30; // daily rate
         });
 
-        if (projectCost) {
-          const previousActualCost = Number(projectCost.actual_cost) || 0;
-          const newActualCost = previousActualCost + totalDailyCost;
+        // Extract existing actual cost info
+        const actual_cost_data = project.actual_cost || {
+          total_actual_cost: 0,
+          cost_details: [],
+        };
 
-          const previous_employee_salary_cost =
-            Number(projectCost.employee_salary_cost) || 0;
-          const new_employee_salary_cost =
-            previous_employee_salary_cost + totalDailyCost;
+        const previous_total = Number(actual_cost_data.total_actual_cost || 0);
+        const new_total = previous_total + total_daily_cost;
 
-          await projectCost.update({
-            actual_cost: newActualCost,
-            employee_salary_cost: new_employee_salary_cost,
-          });
+        // Append daily record to cost_details
+        const new_cost_entry = {
+          date: new Date().toISOString().split("T")[0],
+          daily_salary_cost: total_daily_cost,
+          description: "Daily employee salary cost update",
+        };
 
-          console.log(
-            `Project ID ${projectId}: actual_cost updated to ${newActualCost.toFixed(
-              2
-            )}`
-          );
-        } else {
-          await ProjectCost.create({
-            project_id: projectId,
-            actual_cost: totalDailyCost,
-            employee_salary_cost: totalDailyCost,
-          });
+        // Update actual_cost
+        const updated_actual_cost = {
+          ...actual_cost_data,
+          total_actual_cost: new_total,
+          cost_details: [...actual_cost_data.cost_details, new_cost_entry],
+        };
 
-          console.log(
-            `Project ID ${projectId}: new cost record created with initial cost ${totalDailyCost.toFixed(
-              2
-            )}`
-          );
-        }
+        await project.update({
+          actual_cost: JSON.parse(JSON.stringify(updated_actual_cost)), // Force update
+        });
+
+        console.log(
+          `Project ID ${
+            project.project_id
+          }: total_actual_cost updated to ${new_total.toFixed(2)}`
+        );
       }
 
       console.log("Daily project cost update job completed.");
@@ -84,6 +77,6 @@ cron.schedule("0 0 * * *", async ()  => {
   },
   {
     scheduled: true,
-    timezone: "Africa/Addis_Ababa", 
+    timezone: "Africa/Addis_Ababa",
   }
 );
