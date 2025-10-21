@@ -10,21 +10,21 @@ import fs from "fs";
 export const createExpense = async (req, res) => {
   try {
     const {
-      expense_source,
-      specific_source,
+      expense_reason,
+      specific_reason,
       amount,
       description,
-      expense_date,
+      expensed_date,
       from_account,
       project_id,
     } = req.body;
 
     // Validate required fields
     if (
-      !expense_source ||
+      !expense_reason ||
       !amount ||
-      !expense_date ||
-      !specific_source ||
+      !expensed_date ||
+      !specific_reason ||
       !from_account
     ) {
       return res.status(400).json({
@@ -45,7 +45,7 @@ export const createExpense = async (req, res) => {
       });
     }
 
-    if (expense_source === "Project expense" && !project_id) {
+    if (expense_reason === "Project expense" && !project_id) {
       return res.status(400).json({
         success: false,
         message: "project_id is required for Project expense source",
@@ -71,22 +71,28 @@ export const createExpense = async (req, res) => {
       )}`;
     }
 
-    const newExpense = await Expense.create({
-      expense_source,
-      specific_source,
+    const new_expense = await Expense.create({
+      expense_reason,
+      specific_reason,
       amount,
       description,
-      expense_date,
+      expensed_date,
       from_account,
       project_id: project_id || null,
       receipt,
       is_deleted: false,
     });
 
+    if(new_expense) {
+      // Deduct amount from bank account balance
+      from_acc.balance = Number(from_acc.balance) - Number(amount);
+      await from_acc.save();
+    }
+
     res.status(201).json({
       success: true,
       message: "Expense created successfully",
-      data: newExpense,
+      data: new_expense,
     });
   } catch (error) {
     console.error("Error creating expense:", error);
@@ -133,10 +139,10 @@ export const getAllExpenses = async (req, res) => {
         {
           model: Loan,
           as: "for_loan",
-          attributes: ["loan_id", "loan_type", "amount"],
+          attributes: ["loan_id", "amount"],
         },
       ],
-      order: [["expense_date", "DESC"]],
+      order: [["expensed_date", "DESC"]],
       limit: parseInt(limit),
       offset: parseInt(offset),
     });
@@ -197,7 +203,7 @@ export const getExpenseById = async (req, res) => {
         {
           model: Loan,
           as: "for_loan",
-          attributes: ["loan_id", "loan_type", "amount"],
+          attributes: ["loan_id", "amount"],
         },
       ],
     });
@@ -230,11 +236,11 @@ export const updateExpense = async (req, res) => {
   try {
     const { id } = req.params;
     const {
-      expense_source,
-      specific_source,
+      expense_reason,
+      specific_reason,
       amount,
       description,
-      expense_date,
+      expensed_date,
       from_account,
       project_id,
     } = req.body;
@@ -271,11 +277,11 @@ export const updateExpense = async (req, res) => {
       )}/${req.file.path.replace(/\\/g, "/")}`;
       await expense.save();
     }
-    if (expense_source) to_update.expense_source = expense_source;
-    if (specific_source) to_update.specific_source = specific_source;
+    if (expense_reason) to_update.expense_reason = expense_reason;
+    if (specific_reason) to_update.specific_reason = specific_reason;
     if (amount) to_update.amount = amount;
     if (description) to_update.description = description;
-    if (expense_date) to_update.expense_date = expense_date;
+    if (expensed_date) to_update.expensed_date = expensed_date;
     if (from_account) to_update.from_account = from_account;
     if (project_id !== undefined) to_update.project_id = project_id;
 

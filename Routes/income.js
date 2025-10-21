@@ -12,8 +12,8 @@ import upload from "../Middlewares/upload.js";
 const router = express.Router();
 
 router.post("/", upload.single("receipt"), createIncome);
-router.get("/", getAllIncomes);
 router.get("/summary", getIncomeExpenseSummary);
+router.get("/", getAllIncomes);
 router.get("/:id", getIncomeById);
 router.put("/:id", updateIncome);
 router.delete("/:id", deleteIncome);

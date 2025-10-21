@@ -3,7 +3,7 @@ import BankAccount from "../Models/bank_account.js";
 import Project from "../Models/project.js";
 import Loan from "../Models/loan.js";
 import Expense from "../Models/expense.js";
-import { Op } from "sequelize";
+import { Op, or } from "sequelize";
 import fs from "fs";
 
 /**
@@ -64,8 +64,6 @@ export const createIncome = async (req, res) => {
           data: null,
         });
       }
-    } else {
-      project_id = null;
     }
 
     let receipt = null;
@@ -74,12 +72,6 @@ export const createIncome = async (req, res) => {
         /\\/g,
         "/"
       )}`;
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: "Receipt file is required",
-        data: null,
-      });
     }
 
     // Create the income record
@@ -405,6 +397,18 @@ export const getIncomeExpenseSummary = async (req, res) => {
 
     const active_project = await Project.count({
       where: { is_deleted: false, status: { [Op.ne]: "Completed" } },
+    });
+
+    const loan_cost = await Expense.sum("amount", {
+      where: {
+        is_deleted: false,
+        expense_reason: {
+          [Op.or]: [
+            { [Op.eq]: "Expense for employee loan" },
+            { [Op.eq]: "Expense for repaying loan to bank" },
+          ],
+        },
+      },
     });
 
     const net_profit = Number(total_income || 0) - Number(total_expense || 0);
