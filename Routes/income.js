@@ -13,9 +13,10 @@ const router = express.Router();
 
 router.post("/", upload.single("receipt"), createIncome);
 router.get("/", getAllIncomes);
+router.get("/summary", getIncomeExpenseSummary);
 router.get("/:id", getIncomeById);
 router.put("/:id", updateIncome);
 router.delete("/:id", deleteIncome);
-router.get("/summary", getIncomeExpenseSummary);
+
 
 export default router;
