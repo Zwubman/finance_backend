@@ -5,6 +5,7 @@ import {
   getIncomeById,
   updateIncome,
   deleteIncome,
+  getIncomeExpenseSummary,
 } from "../Controllers/income.js";
 import upload from "../Middlewares/upload.js";
 
@@ -15,5 +16,6 @@ router.get("/", getAllIncomes);
 router.get("/:id", getIncomeById);
 router.put("/:id", updateIncome);
 router.delete("/:id", deleteIncome);
+router.get("/summary", getIncomeExpenseSummary);
 
 export default router;

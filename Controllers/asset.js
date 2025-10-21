@@ -66,6 +66,14 @@ export const createAsset = async (req, res) => {
       vendor: vendor || null,
     });
 
+    let receipt = null;
+    if (req.file) {
+      receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
+        /\\/g,
+        "/"
+      )}`;
+    }
+
     const amount = Number(price) * (quantity || 1);
     if (transaction_type === "Bought") {
       // Record expense for asset purchase
@@ -77,6 +85,7 @@ export const createAsset = async (req, res) => {
         from_account: from_account,
         asset_id: asset.asset_id,
         description: `Asset purchase - ${name}`,
+        receipt,
       });
     }
     if (transaction_type === "Sold") {
@@ -89,6 +98,7 @@ export const createAsset = async (req, res) => {
         to_account: to_account,
         asset_id: asset.asset_id,
         description: `Asset sale - ${name}`,
+        receipt,
       });
     }
 

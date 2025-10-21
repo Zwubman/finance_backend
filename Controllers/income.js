@@ -2,6 +2,7 @@ import Income from "../Models/income.js";
 import BankAccount from "../Models/bank_account.js";
 import Project from "../Models/project.js";
 import Loan from "../Models/loan.js";
+import Expense from "../Models/expense.js";
 import { Op } from "sequelize";
 import fs from "fs";
 
@@ -381,6 +382,45 @@ export const deleteIncome = async (req, res) => {
     });
   } catch (error) {
     console.error("Error deleting income record:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      data: null,
+    });
+  }
+};
+
+/**
+ * Get both toal income and total expenses
+ */
+export const getIncomeExpenseSummary = async (req, res) => {
+  try {
+    const total_income = await Income.sum("amount", {
+      where: { is_deleted: false },
+    });
+
+    const total_expense = await Expense.sum("amount", {
+      where: { is_deleted: false },
+    });
+
+    const active_project = await Project.count({
+      where: { is_deleted: false, status: { [Op.ne]: "Completed" } },
+    });
+
+    const net_profit = Number(total_income || 0) - Number(total_expense || 0);
+
+    return res.status(200).json({
+      success: true,
+      message: "Income and Expense summary retrieved successfully",
+      data: {
+        total_income: total_income || 0,
+        total_expense: total_expense || 0,
+        net_profit: net_profit || 0,
+        active_project: active_project || 0,
+      },
+    });
+  } catch (error) {
+    console.error("Error retrieving income and expense summary:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
