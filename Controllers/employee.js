@@ -147,7 +147,14 @@ export const getEmployeeById = async (req, res) => {
 
 export const getAllEmployees = async (req, res) => {
   try {
-    const employees = await Employee.findAll({ where: { is_deleted: false } });
+    const { page = 1, limit = 10, } = req.query;
+    const offset = (page - 1) * limit;
+
+    const { count, rows: employees } = await Employee.findAndCountAll({
+      where: { is_deleted: false },
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+    });
 
     if (employees.length === 0) {
       return res.status(404).json({
@@ -161,6 +168,12 @@ export const getAllEmployees = async (req, res) => {
       success: true,
       message: "Employees retrieved successfully",
       data: employees,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / limit),
+      },
     });
   } catch (error) {
     console.error("Error in get all employees:", error);

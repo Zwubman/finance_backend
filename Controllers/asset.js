@@ -121,9 +121,14 @@ export const createAsset = async (req, res) => {
  *  */
 export const getAllAssets = async (req, res) => {
   try {
-    const assets = await Asset.findAll({
+    const { page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const { count, rows: assets } = await Asset.findAndCountAll({
       where: { is_deleted: false },
       order: [["createdAt", "DESC"]],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
     });
 
     if (assets.length === 0) {
@@ -133,7 +138,19 @@ export const getAllAssets = async (req, res) => {
       });
     }
 
-    res.status(200).json({ success: true, data: assets });
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: "All assets retrieved successfully",
+        data: assets,
+        pagination: {
+          total: count,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalPages: Math.ceil(count / limit),
+        },
+      });
   } catch (error) {
     console.error("Error fetching assets:", error);
     res

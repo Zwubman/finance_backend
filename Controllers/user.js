@@ -127,7 +127,14 @@ export const getUserById = async (req, res) => {
 
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.findAll({ where: { is_deleted: false } });
+    const {page = 1, limit = 10} = req.query;
+    const offset = (page - 1) * limit;
+
+    const {count, rows: users} = await User.findAndCountAll({
+      where: { is_deleted: false },
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+    });
 
     if (users.length === 0) {
       return res.status(404).json({
@@ -141,6 +148,12 @@ export const getAllUsers = async (req, res) => {
       success: true,
       message: "Users retrieved successfully",
       data: users,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / limit),
+      },
     });
   } catch (error) {
     console.error("Error in getAllUsers:", error);

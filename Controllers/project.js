@@ -52,15 +52,6 @@ export const createProject = async (req, res) => {
       assigned_to: employee_id,
     });
 
-    // Attach employees if provided
-    // const employeeLinks = employee_id.map((emp_id) => ({
-    //   project_id: project.project_id,
-    //   employee_id: emp_id,
-    // }));
-    // if (employeeLinks.length > 0) {
-    //   await ProjectEmployee.bulkCreate(employeeLinks);
-    // }
-
     return res.status(201).json({
       success: true,
       message: "Project created successfully",
@@ -81,14 +72,25 @@ export const createProject = async (req, res) => {
  */
 export const getAllProjects = async (req, res) => {
   try {
-    const projects = await Project.findAll({
+    const { page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const { count, rows: projects } = await Project.findAndCountAll({
       where: { is_deleted: false },
+      limit: parseInt(limit),
+      offset: parseInt(offset),
     });
 
     res.status(200).json({
       success: true,
       message: "Projects retrieved successfully",
       data: projects,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / limit),
+      },
     });
   } catch (error) {
     console.error("Error in getAllProjects:", error);
@@ -334,8 +336,6 @@ export const addEmployeeToProject = async (req, res) => {
     assigned.add(Number(employee_id));
 
     await project.update({ assigned_to: [...assigned] });
-
-    // await ProjectEmployee.findOrCreate({ where: { project_id: id, employee_id } });
 
     res.status(200).json({
       success: true,

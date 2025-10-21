@@ -3,7 +3,6 @@ import BankAccount from "../Models/bank_account.js";
 import AccountTransfer from "../Models/account_transfer.js";
 import fs from "fs";
 
-
 export const createAccountTransfer = async (req, res) => {
   const t = await sequelize.transaction(); // Start a transaction
 
@@ -113,22 +112,32 @@ export const createAccountTransfer = async (req, res) => {
   }
 };
 
-
 export const getAllAccountTransfers = async (req, res) => {
   try {
-    const transfers = await AccountTransfer.findAll({
+    const { page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const { count, rows: transfers } = await AccountTransfer.findAll({
       where: { is_deleted: false },
       include: [
         { model: BankAccount, as: "from_acc" },
         { model: BankAccount, as: "to_acc" },
       ],
       order: [["createdAt", "DESC"]],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
     });
 
     return res.status(200).json({
       success: true,
       message: "Account transfers retrieved successfully",
       data: transfers,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / limit),
+      },
     });
   } catch (error) {
     console.error("Error in get all account transfers:", error);

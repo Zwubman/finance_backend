@@ -223,7 +223,10 @@ export const getLoanById = async (req, res) => {
 
 export const getAllLoans = async (req, res) => {
   try {
-    const loans = await Loan.findAll({
+    const {page = 1, limit = 10} = req.query;
+    const offset = (page - 1) * limit;
+
+    const {count, rows:loans} = await Loan.findAll({
       where: { is_deleted: false },
       include: [
         {
@@ -238,6 +241,8 @@ export const getAllLoans = async (req, res) => {
           ],
         },
       ],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
     });
 
     if (loans.length === 0) {
@@ -252,6 +257,12 @@ export const getAllLoans = async (req, res) => {
       success: true,
       message: "Loans retrieved successfully",
       data: loans,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / limit),
+      },
     });
   } catch (error) {
     console.error("Error in get all loans:", error);

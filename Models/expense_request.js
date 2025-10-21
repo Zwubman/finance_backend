@@ -1,6 +1,7 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../Config/database.js";
 import User from "./user.js";
+import Employee from "./employee.js";
 
 const ExpenseRequest = sequelize.define(
   "expense_request",
@@ -13,6 +14,14 @@ const ExpenseRequest = sequelize.define(
     employee_name: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    employee_id: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      references: {
+        model: "employees",
+        key: "employee_id",
+      },
     },
     place_of_origin: {
       type: DataTypes.STRING,
@@ -124,21 +133,17 @@ const ExpenseRequest = sequelize.define(
   }
 );
 
-ExpenseRequest.belongsTo(User, { as: "requester", foreignKey: "requested_by" });
-ExpenseRequest.belongsTo(User, { as: "verifier", foreignKey: "verified_by" });
-ExpenseRequest.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
+ExpenseRequest.belongsTo(User, { foreignKey: "requested_by", as: "requester" });
+User.hasMany(ExpenseRequest, { foreignKey: "requested_by", as: "requester" });
 
-User.hasMany(ExpenseRequest, {
-  as: "requestedExpenses",
-  foreignKey: "requested_by",
-});
-User.hasMany(ExpenseRequest, {
-  as: "verifiedExpenses",
-  foreignKey: "verified_by",
-});
-User.hasMany(ExpenseRequest, {
-  as: "approvedExpenses",
-  foreignKey: "approved_by",
-});
+ExpenseRequest.belongsTo(User, { foreignKey: "verified_by", as: "verifier" });
+User.hasMany(ExpenseRequest, { foreignKey: "verified_by", as: "verifier" });
+
+ExpenseRequest.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
+User.hasMany(ExpenseRequest, { foreignKey: "approved_by", as: "approver" });
+
+ExpenseRequest.belongsTo(Employee, { foreignKey: "employee_id", as: "employee" });
+Employee.hasMany(ExpenseRequest, { foreignKey: "employee_id", as: "employee" });
+
 
 export default ExpenseRequest;
