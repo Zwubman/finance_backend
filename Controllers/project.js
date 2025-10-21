@@ -1,5 +1,7 @@
 import Employee from "../Models/employee.js";
 import Project from "../Models/project.js";
+import Expense from "../Models/expense.js";
+import BankAccount from "../Models/bank_account.js";
 
 /**
  * Create a new project
@@ -212,7 +214,7 @@ export const deleteProject = async (req, res) => {
 export const addProjectCostEntry = async (req, res) => {
   try {
     const { id } = req.params;
-    const { reason, amount, date } = req.body;
+    const { reason, amount, date, from_account } = req.body;
 
     if (!reason || isNaN(amount)) {
       return res.status(400).json({
@@ -228,6 +230,17 @@ export const addProjectCostEntry = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Project not found" });
+    }
+
+    const from_acc = await BankAccount.findOne({
+      where: { account_id: from_account, is_deleted: false },
+    });
+
+    if (!from_acc) {
+      return res.status(404).json({
+        success: false,
+        message: "Bank account not found",
+      });
     }
 
     // Correctly initialize structure
@@ -266,6 +279,17 @@ export const addProjectCostEntry = async (req, res) => {
     project.set("actual_cost", updatedActualCost);
 
     await project.save(); // Different from project.update()
+
+    await Expense.create({
+      expense_reason: "Project expenses",
+      specific_reason: `Project cost entry for project ID ${id}`,
+      amount: Number(amount),
+      expensed_date: date || new Date(),
+      from_account: from_account,
+      project_id: project.project_id,
+      description: `Project cost - ${reason}`,
+      receipt,
+    });
 
     return res.status(200).json({
       success: true,
