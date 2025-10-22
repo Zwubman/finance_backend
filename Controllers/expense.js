@@ -15,18 +15,11 @@ export const createExpense = async (req, res) => {
       amount,
       description,
       expensed_date,
-      from_account,
       project_id,
     } = req.body;
 
     // Validate required fields
-    if (
-      !expense_reason ||
-      !amount ||
-      !expensed_date ||
-      !specific_reason ||
-      !from_account
-    ) {
+    if (!expense_reason || !amount || !expensed_date || !specific_reason) {
       return res.status(400).json({
         success: false,
         message: "Missing required fields",
@@ -35,7 +28,7 @@ export const createExpense = async (req, res) => {
     }
 
     const from_acc = await BankAccount.findOne({
-      where: { account_id: from_account, is_deleted: false },
+      where: { account_name: "Vault", is_deleted: false },
     });
     if (!from_acc) {
       return res.status(400).json({
@@ -63,19 +56,19 @@ export const createExpense = async (req, res) => {
         });
       }
     }
-    let receipt = null;
-    if (req.file) {
-      receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
-        /\\/g,
-        "/"
-      )}`;
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: "Receipt is required for the expense",
-        data: null,
-      });
-    }
+    // let receipt = null;
+    // if (req.file) {
+    //   receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
+    //     /\\/g,
+    //     "/"
+    //   )}`;
+    // } else {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Receipt is required for the expense",
+    //     data: null,
+    //   });
+    // }
 
     const new_expense = await Expense.create({
       expense_reason,
@@ -83,18 +76,15 @@ export const createExpense = async (req, res) => {
       amount,
       description,
       expensed_date,
-      from_account,
       project_id: project_id || null,
-      receipt,
-      is_deleted: false,
     });
 
-    if (new_expense) {
-      // Deduct amount from bank account balance with transfer fee
-      from_acc.balance =
-        Number(from_acc.balance) - Number(amount + amount * 0.02);
-      await from_acc.save();
-    }
+    // if (new_expense) {
+    //   // Deduct amount from bank account balance with transfer fee
+    //   from_acc.balance =
+    //     Number(from_acc.balance) - Number(amount + amount * 0.02);
+    //   await from_acc.save();
+    // }
 
     res.status(201).json({
       success: true,
@@ -117,6 +107,15 @@ export const getAllExpenses = async (req, res) => {
     const { page = 1, limit = 10, startDate, endDate } = req.query;
     const offset = (page - 1) * limit;
 
+    const role = req.user.role;
+
+    const condition = {};
+    if (role === "Accountant") {
+      condition.status = ["Requested", "Approved", "Rejected"];
+    } else if (role === "Cashier") {
+      condition.status = ["Approved", "Paid"];
+    }
+
     // Build date filter
     const dateFilter = {};
     if (startDate && endDate) {
@@ -131,6 +130,7 @@ export const getAllExpenses = async (req, res) => {
       where: {
         is_deleted: false,
         ...dateFilter,
+        ...condition,
       },
       include: [
         {
@@ -205,7 +205,7 @@ export const getExpenseById = async (req, res) => {
         {
           model: BankAccount,
           as: "expense_sender",
-          attributes: ["account_id", "account_name", "balance"],
+          attributes: ["account_id", "account_name"],
         },
         {
           model: Loan,
@@ -337,6 +337,118 @@ export const deleteExpense = async (req, res) => {
     });
   } catch (error) {
     console.error("Error deleting expense:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Server Error", error: error.message });
+  }
+};
+
+/**
+ * Approve expense
+ */
+export const updateExpenseStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["Approved", "Rejected", "Paid"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status",
+        data: null,
+      });
+    }
+
+    if (
+      req.user.role === "Accountant" &&
+      !["Approved", "Rejected"].includes(status)
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Accountant can only approve or reject expenses",
+        data: null,
+      });
+    }
+
+    if (req.user.role === "Cashier" && status !== "Paid") {
+      return res.status(403).json({
+        success: false,
+        message: "Cashier can only mark expenses as paid",
+        data: null,
+      });
+    }
+
+    const from_acc = await BankAccount.findOne({
+      where: { account_name: "Peal", is_deleted: false },
+    });
+    if (!from_acc) {
+      return res.status(400).json({
+        success: false,
+        message: "Source bank account not found",
+        data: null,
+      });
+    }
+
+    if (from_acc.balance < expense.amount && status === "Approved") {
+      return res.status(400).json({
+        success: false,
+        message: "Insufficient balance in the bank account to pay the expense",
+        data: null,
+      });
+    }
+
+    const expense = await Expense.findOne({
+      where: { expense_id: id, is_deleted: false },
+    });
+
+    if (!expense) {
+      return res.status(404).json({
+        success: false,
+        message: "Expense not found",
+        data: null,
+      });
+    }
+
+    if (status === "Paid" && expense.status !== "Approved") {
+      return res.status(400).json({
+        success: false,
+        message: "Only approved expenses can be marked as paid",
+        data: null,
+      });
+    }
+
+    let receipt = null;
+    if (status === "Paid") {
+      if (req.file) {
+        receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
+          /\\/g,
+          "/"
+        )}`;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Receipt is required for the expense",
+          data: null,
+        });
+      }
+    }
+
+    await expense.update({ status, receipt });
+
+    if (expense.status === "Paid") {
+      // Deduct amount from bank account balance with transfer fee
+      from_acc.balance =
+        Number(from_acc.balance) - Number(amount + amount * 0.02);
+      await from_acc.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Expense ${status.toLowerCase()} successfully`,
+      data: expense,
+    });
+  } catch (error) {
+    console.error("Error approving expense:", error);
     res
       .status(500)
       .json({ success: false, message: "Server Error", error: error.message });

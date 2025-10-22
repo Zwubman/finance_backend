@@ -44,7 +44,7 @@ const Expense = sequelize.define(
     },
     from_account: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: "bank_accounts",
         key: "account_id",
@@ -81,6 +81,11 @@ const Expense = sequelize.define(
     receipt: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    status: {
+      type: DataTypes.ENUM("Requested", "Approved", "Rejected", "Paid"),
+      allowNull: false,
+      defaultValue: "Requested",
     },
     is_deleted: {
       type: DataTypes.BOOLEAN,
