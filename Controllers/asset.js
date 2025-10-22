@@ -1,6 +1,7 @@
 import Asset from "../Models/asset.js";
 import Expense from "../Models/expense.js";
 import Income from "../Models/income.js";
+import BankAccount from "../Models/bank_account.js";
 
 /**
  * Create a new asset
@@ -26,6 +27,28 @@ export const createAsset = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Missing required fields",
+      });
+    }
+
+    const from_acc = await BankAccount.findOne({
+      where: { account_id: from_account, is_deleted: false },
+    });
+    if (!from_acc) {
+      return res.status(400).json({
+        success: false,
+        message: "Source bank account not found",
+        data: null,
+      });
+    }
+
+    const to_acc = await BankAccount.findOne({
+      where: { account_id: to_account, is_deleted: false },
+    });
+    if (!to_acc) {
+      return res.status(400).json({
+        success: false,
+        message: "Destination bank account not found",
+        data: null,
       });
     }
 
@@ -87,6 +110,10 @@ export const createAsset = async (req, res) => {
         description: `Asset purchase - ${name}`,
         receipt,
       });
+
+      from_acc.balance =
+        Number(from_acc.balance) - Number(amount + amount * 0.02); // Assuming 2% transaction fee
+      await from_acc.save();
     }
     if (transaction_type === "Sold") {
       // Record income from asset sale
@@ -100,6 +127,9 @@ export const createAsset = async (req, res) => {
         description: `Asset sale - ${name}`,
         receipt,
       });
+
+      to_acc.balance = Number(to_acc.balance) + Number(amount);
+      await to_acc.save();
     }
 
     return res.status(201).json({
@@ -138,19 +168,17 @@ export const getAllAssets = async (req, res) => {
       });
     }
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "All assets retrieved successfully",
-        data: assets,
-        pagination: {
-          total: count,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalPages: Math.ceil(count / limit),
-        },
-      });
+    res.status(200).json({
+      success: true,
+      message: "All assets retrieved successfully",
+      data: assets,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / limit),
+      },
+    });
   } catch (error) {
     console.error("Error fetching assets:", error);
     res

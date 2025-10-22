@@ -15,14 +15,6 @@ const ExpenseRequest = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    employee_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      references: {
-        model: "employees",
-        key: "employee_id",
-      },
-    },
     place_of_origin: {
       type: DataTypes.STRING,
       allowNull: true,

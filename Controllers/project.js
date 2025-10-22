@@ -237,7 +237,6 @@ export const addProjectCostEntry = async (req, res) => {
     const from_acc = await BankAccount.findOne({
       where: { account_id: from_account, is_deleted: false },
     });
-
     if (!from_acc) {
       return res.status(404).json({
         success: false,
@@ -292,6 +291,10 @@ export const addProjectCostEntry = async (req, res) => {
       description: `Project cost - ${reason}`,
       receipt,
     });
+
+    from_acc.balance =
+      Number(from_acc.balance) - Number(amount + amount * 0.02); // Assuming 2% transaction fee
+    await from_acc.save();
 
     return res.status(200).json({
       success: true,

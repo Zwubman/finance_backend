@@ -155,6 +155,14 @@ export const createLoan = async (req, res) => {
         from_account: from_account,
         loan_id: loan.loan_id,
       });
+
+      const from_acc = await BankAccount.findOne({
+        where: { account_id: from_account, is_deleted: false },
+      });
+
+      from_acc.balance =
+        Number(from_acc.balance) - Number(amount + amount * 0.02); // Assuming 2% transaction fee
+      await from_acc.save();
     }
 
     if (status === "Received") {
@@ -166,6 +174,12 @@ export const createLoan = async (req, res) => {
         to_account: to_account,
         loan_id: loan.loan_id,
       });
+      const to_acc = await BankAccount.findOne({
+        where: { account_id: to_account, is_deleted: false },
+      });
+
+      to_acc.balance = Number(to_acc.balance) + Number(amount);
+      await to_acc.save();
     }
     return res.status(201).json({
       success: true,
@@ -223,10 +237,10 @@ export const getLoanById = async (req, res) => {
 
 export const getAllLoans = async (req, res) => {
   try {
-    const {page = 1, limit = 10} = req.query;
+    const { page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
 
-    const {count, rows:loans} = await Loan.findAll({
+    const { count, rows: loans } = await Loan.findAll({
       where: { is_deleted: false },
       include: [
         {
