@@ -8,11 +8,13 @@ import accountTransferRoutes from "./account_transfer.js";
 import incomeRoutes from "./income.js";
 import expenseRoutes from "./expense.js";
 import assetRoutes from "./asset.js";
+import budgetPlanRoutes from "./budget_plan.js";
 
 const router = express.Router();
 
 router.use("/users", userRoutes);
 router.use("/employees", employeeRoutes);
+router.use("/budget-plans", budgetPlanRoutes);
 router.use("/bank-accounts", bankAccountRoutes);
 router.use("/account-transfers", accountTransferRoutes);
 router.use("/projects", projectRoutes);
