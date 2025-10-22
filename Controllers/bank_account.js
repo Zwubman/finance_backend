@@ -80,8 +80,15 @@ export const getBankAccountById = async (req, res) => {
 
 export const getAllBankAccounts = async (req, res) => {
   try {
+    const role = req.user.role;
+    const where = { is_deleted: false };
+
+    if (role === "Accountant") {
+      where.account_name = "Peal";
+    }
+
     const bank_accounts = await BankAccount.findAll({
-      where: { is_deleted: false },
+      where,
     });
 
     if (bank_accounts.length === 0) {

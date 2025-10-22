@@ -69,6 +69,12 @@ export const createExpense = async (req, res) => {
         /\\/g,
         "/"
       )}`;
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Receipt is required for the expense",
+        data: null,
+      });
     }
 
     const new_expense = await Expense.create({
@@ -83,9 +89,10 @@ export const createExpense = async (req, res) => {
       is_deleted: false,
     });
 
-    if(new_expense) {
-      // Deduct amount from bank account balance
-      from_acc.balance = Number(from_acc.balance) - Number(amount);
+    if (new_expense) {
+      // Deduct amount from bank account balance with transfer fee
+      from_acc.balance =
+        Number(from_acc.balance) - Number(amount + amount * 0.02);
       await from_acc.save();
     }
 
@@ -134,7 +141,7 @@ export const getAllExpenses = async (req, res) => {
         {
           model: BankAccount,
           as: "expense_sender",
-          attributes: ["account_id", "account_name", "balance"],
+          attributes: ["account_id", "account_name"],
         },
         {
           model: Loan,

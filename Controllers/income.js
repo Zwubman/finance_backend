@@ -72,10 +72,16 @@ export const createIncome = async (req, res) => {
         /\\/g,
         "/"
       )}`;
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Receipt is required for income.",
+        data: null,
+      });
     }
 
     // Create the income record
-    const newIncome = await Income.create({
+    const new_income = await Income.create({
       income_source,
       specific_source,
       amount,
@@ -86,13 +92,15 @@ export const createIncome = async (req, res) => {
       description: description || null,
     });
 
-    to_acc.balance = Number(to_acc.balance) + Number(amount);
-    await to_acc.save();
+    if (new_income) {
+      to_acc.balance = Number(to_acc.balance) + Number(amount);
+      await to_acc.save();
+    }
 
     return res.status(201).json({
       success: true,
       message: "Income record created successfully",
-      data: newIncome,
+      data: new_income,
     });
   } catch (error) {
     console.error("Error creating income record:", error);
@@ -128,7 +136,11 @@ export const getAllIncomes = async (req, res) => {
         ...dateFilter,
       },
       include: [
-        { model: BankAccount, as: "receiver" },
+        {
+          model: BankAccount,
+          as: "receiver",
+          attributes: ["account_id", "account_name"],
+        },
         { model: Project, as: "from_project" },
         { model: Loan, as: "from_loan" },
       ],

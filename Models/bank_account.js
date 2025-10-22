@@ -11,7 +11,7 @@ const BankAccount = sequelize.define(
       primaryKey: true,
     },
     account_name: {
-      type: DataTypes.STRING,
+      type: DataTypes.ENUM("Vault", "Peal",),
       allowNull: false,
     },
     account_owner_name: {
