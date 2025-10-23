@@ -24,7 +24,7 @@ const Expense = sequelize.define(
         "Travel & Miscellaneous",
         "Project expenses",
         "Expense for employee loan",
-        "Expense for repaying loan to bank",
+        "Expense for returning external loan",
         "Expense for asset purchase",
         "Other"
       ),
@@ -40,7 +40,7 @@ const Expense = sequelize.define(
     },
     expensed_date: {
       type: DataTypes.DATE,
-      allowNull: false,
+      allowNull: true,
     },
     from_account: {
       type: DataTypes.INTEGER,

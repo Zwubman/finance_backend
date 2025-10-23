@@ -1,11 +1,13 @@
 import Loan from "../Models/loan.js";
-import User from "../Models/user.js";
 import Expense from "../Models/expense.js";
 import Income from "../Models/income.js";
 import Employee from "../Models/employee.js";
 import BankAccount from "../Models/bank_account.js";
 import fs from "fs";
 
+/**
+ * Create a new loan
+ */
 export const createLoan = async (req, res) => {
   try {
     const {
@@ -18,7 +20,6 @@ export const createLoan = async (req, res) => {
       purpose,
       penalty,
       status,
-      from_account,
       to_account,
     } = req.body;
 
@@ -38,6 +39,14 @@ export const createLoan = async (req, res) => {
       });
     }
 
+    const allowedStatuses = ["Give_Request", "Received"];
+    if (status && !allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Allowed: ${allowedStatuses.join(", ")}`,
+      });
+    }
+
     if (to_who) {
       const employee = await Employee.findOne({
         where: { employee_id: to_who, is_deleted: false },
@@ -46,14 +55,6 @@ export const createLoan = async (req, res) => {
         return res.status(404).json({
           success: false,
           message: "Employee not found",
-          data: null,
-        });
-      }
-
-      if (!from_account) {
-        return res.status(400).json({
-          success: false,
-          message: "from_account is required when loan is given to employee",
           data: null,
         });
       }
@@ -66,20 +67,6 @@ export const createLoan = async (req, res) => {
           "to_account is required when loan is received from external source",
         data: null,
       });
-    }
-
-    if (from_account) {
-      const bank_account = await BankAccount.findOne({
-        where: { account_id: from_account, is_deleted: false },
-      });
-
-      if (!bank_account) {
-        return res.status(404).json({
-          success: false,
-          message: "Bank account not found",
-          data: null,
-        });
-      }
     }
 
     if (to_account) {
@@ -96,24 +83,6 @@ export const createLoan = async (req, res) => {
       }
     }
 
-    if (status) {
-      if (!["Given", "Received", "Returned"].includes(status)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid status",
-          data: null,
-        });
-      }
-    }
-
-    if (status === "Given" && !to_who) {
-      return res.status(400).json({
-        success: false,
-        message: "to_who is required when status is Given",
-        data: null,
-      });
-    }
-
     if (status === "Received" && !from_whom) {
       return res.status(400).json({
         success: false,
@@ -123,11 +92,13 @@ export const createLoan = async (req, res) => {
     }
 
     let receipt = null;
-    if (req.file) {
-      receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
-        /\\/g,
-        "/"
-      )}`;
+    if (status === "Received" && to_who) {
+      if (req.file) {
+        receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
+          /\\/g,
+          "/"
+        )}`;
+      }
     }
 
     const loan = await Loan.create({
@@ -143,28 +114,6 @@ export const createLoan = async (req, res) => {
       status,
     });
 
-    if (status === "Given") {
-      const employee = await Employee.findOne({
-        where: { employee_id: to_who, is_deleted: false },
-      });
-      const expense = await Expense.create({
-        expense_reason: "Expense for employee loan",
-        specific_reason: `Loan given to employee: ${employee.first_name} ${employee.middle_name} ${employee.last_name} `,
-        amount: amount,
-        expensed_date: loan.createdAt,
-        from_account: from_account,
-        loan_id: loan.loan_id,
-      });
-
-      const from_acc = await BankAccount.findOne({
-        where: { account_id: from_account, is_deleted: false },
-      });
-
-      from_acc.balance =
-        Number(from_acc.balance) - Number(amount + amount * 0.02); // Assuming 2% transaction fee
-      await from_acc.save();
-    }
-
     if (status === "Received") {
       const income = await Income.create({
         income_source: "Income from loans",
@@ -173,6 +122,7 @@ export const createLoan = async (req, res) => {
         received_date: loan.createdAt,
         to_account: to_account,
         loan_id: loan.loan_id,
+        receipt: receipt,
       });
       const to_acc = await BankAccount.findOne({
         where: { account_id: to_account, is_deleted: false },
@@ -194,6 +144,9 @@ export const createLoan = async (req, res) => {
   }
 };
 
+/**
+ * Get loan by ID
+ */
 export const getLoanById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -235,13 +188,27 @@ export const getLoanById = async (req, res) => {
   }
 };
 
+/**
+ * Get all loans with pagination
+ * Accountants see only Give_Request and Return_Request
+ * Cashiers see only Given and Returned
+ * Managers see all loans
+ */
 export const getAllLoans = async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
+    const role = req.user.role;
+
+    const where = { is_deleted: false };
+    if (role === "Accountant") {
+      where.status = ["Give_Request", "Return_Request"];
+    } else if (role === "Cashier") {
+      where.status = ["Given", "Returned"];
+    }
 
     const { count, rows: loans } = await Loan.findAll({
-      where: { is_deleted: false },
+      where,
       include: [
         {
           model: Employee,
@@ -286,6 +253,9 @@ export const getAllLoans = async (req, res) => {
   }
 };
 
+/*
+ * Update a loan
+ */
 export const updateLoan = async (req, res) => {
   try {
     const { id } = req.params;
@@ -298,8 +268,6 @@ export const updateLoan = async (req, res) => {
       interest_rate,
       start_date,
       end_date,
-      from_account,
-      to_account,
     } = req.body;
 
     if (Object.keys(req.body).length === 0) {
@@ -354,8 +322,6 @@ export const updateLoan = async (req, res) => {
     if (from_whom) to_update.from_whom = from_whom;
     if (to_who) to_update.to_who = to_who;
     if (penalty) to_update.penalty = penalty;
-    if (from_account) to_update.from_account = from_account;
-    if (to_account) to_update.to_account = to_account;
 
     await loan.update(to_update);
 
@@ -374,91 +340,9 @@ export const updateLoan = async (req, res) => {
   }
 };
 
-export const updateLoanStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, to_account, from_account, penalty } = req.body;
-
-    if (!status || !to_account) {
-      return res.status(400).json({
-        success: false,
-        message: "Status and to_account are required",
-        data: null,
-      });
-    }
-
-    if (!["Returned"].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid status",
-        data: null,
-      });
-    }
-
-    const loan = await Loan.findOne({
-      where: {
-        loan_id: id,
-        is_deleted: false,
-      },
-    });
-
-    if (!loan) {
-      return res.status(404).json({
-        success: false,
-        message: "Loan not found",
-        data: null,
-      });
-    }
-
-    if (loan.status === "Given" && status === "Returned") {
-      const income = await Income.create({
-        income_source: "Repaid from employee loan",
-        specific_source: `Loan repaid from employee ID: ${loan.to_who}`,
-        amount:
-          loan.amount +
-          (penalty ? penalty : 0) +
-          (loan.interest_rate ? (loan.amount * loan.interest_rate) / 100 : 0),
-        received_date: new Date(),
-        to_account: to_account,
-        loan_id: loan.loan_id,
-      });
-    } else if (loan.status === "Received" && status === "Returned") {
-      const expense = await Expense.create({
-        reason: "Expense for repaying loan to bank",
-        specific_reason: `Loan repaid to ${loan.from_whom}`,
-        amount:
-          loan.amount +
-          (penalty ? penalty : 0) +
-          (loan.interest_rate ? (loan.amount * loan.interest_rate) / 100 : 0),
-        expensed_date: new Date(),
-        from_account: from_account,
-        loan_id: loan.loan_id,
-      });
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot change status from ${loan.status} to ${status}`,
-        data: null,
-      });
-    }
-
-    await loan.update({ status });
-
-    return res.status(200).json({
-      success: true,
-      message: "Loan status updated successfully with appropriate transactions",
-      data: { status },
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      data: null,
-    });
-  }
-};
-
+/**
+ * Delete a loan (soft delete)
+ */
 export const deleteLoan = async (req, res) => {
   try {
     const { id } = req.params;
@@ -494,6 +378,195 @@ export const deleteLoan = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Internal server error",
+      data: null,
+    });
+  }
+};
+
+/**
+ * Update loan status manager can only send Return_Request
+ * Accountant can approve/reject Give_Request and Return_Request
+ * Cashier can mark Given and Returned loans as Paid
+ */
+export const updateLoanStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const role = req.user.role;
+
+    const loan = await Loan.findOne({
+      where: {
+        loan_id: id,
+        is_deleted: false,
+      },
+    });
+
+    if (!loan) {
+      return res.status(404).json({
+        success: false,
+        message: "Loan not found",
+        data: null,
+      });
+    }
+
+    if (role === "Accountant") {
+      allowedStatus = ["Give_Rejected", "Return_Rejected", "Given", "Returned"];
+      if (!allowedStatus.includes(status)) {
+        return res.status(403).json({
+          success: false,
+          message: `Accountant can only update status to: ${allowedStatus.join(
+            ", "
+          )}`,
+          data: null,
+        });
+      }
+    } else if (role === "Cashier") {
+      if (status !== "Paid") {
+        return res.status(403).json({
+          success: false,
+          message: `Cashier role can only update status to Paid`,
+          data: null,
+        });
+      }
+    } else if (role === "Manager") {
+      if (status !== "Return_Request" && loan.to_who === null) {
+        return res.status(403).json({
+          success: false,
+          message: `Manager role can only send Return_Request`,
+          data: null,
+        });
+      }
+    } else {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to update loan status",
+        data: null,
+      });
+    }
+
+    if (loan.status === "Give_Request") {
+      if (!["Give_Rejected", "Given"].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status transition from ${loan.status} to ${status}`,
+          data: null,
+        });
+      }
+    } else if (loan.status === "Return_Request") {
+      if (!["Return_Rejected", "Returned"].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status transition from ${loan.status} to ${status}`,
+          data: null,
+        });
+      }
+    } else if (loan.status === "Given" || loan.status === "Returned") {
+      if (status !== "Paid") {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status transition from ${loan.status} to ${status}`,
+          data: null,
+        });
+      }
+    } else if (loan.status === "Received" && loan.to_who === null) {
+      if (status !== "Return_Request") {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status transition from ${loan.status} to ${status}`,
+          data: null,
+        });
+      }
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot change status from ${loan.status} to ${status}`,
+        data: null,
+      });
+    }
+
+    const from_acc = await BankAccount.findOne({
+      where: { account_name: "Peal", is_deleted: false },
+    });
+    if (!from_acc) {
+      return res.status(404).json({
+        success: false,
+        message: "Bank account not found",
+        data: null,
+      });
+    }
+
+    if (status === "Given" || status === "Returned") {
+      if (from_acc.balance < loan.amount) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Insufficient balance in the bank account to give/return loan",
+          data: null,
+        });
+      }
+    }
+
+    let receipt = null;
+    let from_account = null;
+    if (status === "Paid") {
+      if (req.file) {
+        receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
+          /\\/g,
+          "/"
+        )}`;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Receipt is required when marking loan as Paid",
+          data: null,
+        });
+      }
+      from_account = from_acc.account_id;
+    }
+
+    await loan.update({
+      status,
+      receipt,
+      from_account,
+    });
+
+    if (loan.status === "Paid") {
+      await Expense.create({
+        reason:
+          loan.to_who !== null
+            ? "Expense for employee loan"
+            : "Expense for returning external loan",
+        specific_reason:
+          loan.to_who !== null
+            ? `Loan given to employee ID: ${loan.to_who}`
+            : `Loan returned to ${loan.from_whom}`,
+        amount:
+          loan.amount +
+          loan.amount * 0.02 +
+          (loan.to_who === null ? (loan.interest_rate * loan.amount) / 100 : 0),
+        expensed_date: new Date(),
+        from_account: from_acc.account_id,
+        loan_id: loan.loan_id,
+        status: "Paid",
+        receipt: receipt,
+      });
+
+      from_acc.balance =
+        Number(from_acc.balance) -
+        Number(
+          loan.amount +
+            loan.amount * 0.02 +
+            (loan.to_who === null
+              ? (loan.interest_rate * loan.amount) / 100
+              : 0)
+        );
+      await from_acc.save();
+    }
+  } catch (error) {
+    console.error("Error in update loan status:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
       data: null,
     });
   }

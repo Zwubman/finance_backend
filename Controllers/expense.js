@@ -9,17 +9,11 @@ import fs from "fs";
  */
 export const createExpense = async (req, res) => {
   try {
-    const {
-      expense_reason,
-      specific_reason,
-      amount,
-      description,
-      expensed_date,
-      project_id,
-    } = req.body;
+    const { expense_reason, specific_reason, amount, description, project_id } =
+      req.body;
 
     // Validate required fields
-    if (!expense_reason || !amount || !expensed_date || !specific_reason) {
+    if (!expense_reason || !amount || !specific_reason) {
       return res.status(400).json({
         success: false,
         message: "Missing required fields",
@@ -75,7 +69,6 @@ export const createExpense = async (req, res) => {
       specific_reason,
       amount,
       description,
-      expensed_date,
       project_id: project_id || null,
     });
 
@@ -433,13 +426,26 @@ export const updateExpenseStatus = async (req, res) => {
       }
     }
 
-    await expense.update({ status, receipt });
+    
+    let from_account = null;
+    if(status === "Paid"){
+      from_account = from_acc.account_id;
+    }
+
+    await expense.update({
+      status,
+      receipt,
+      from_account,
+    });
 
     if (expense.status === "Paid") {
       // Deduct amount from bank account balance with transfer fee
       from_acc.balance =
         Number(from_acc.balance) - Number(amount + amount * 0.02);
       await from_acc.save();
+
+      expense.expensed_date = new Date();
+      await expense.save();
     }
 
     res.status(200).json({

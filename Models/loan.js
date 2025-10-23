@@ -19,7 +19,8 @@ const Loan = sequelize.define(
         key: "employee_id",
       },
     },
-    from_whom: { // bank name who provide the loan to our company
+    from_whom: {
+      // bank name who provide the loan to our company
       type: DataTypes.STRING,
       allowNull: true,
     },
@@ -48,8 +49,19 @@ const Loan = sequelize.define(
       allowNull: true,
     },
     status: {
-      type: DataTypes.ENUM("Given", "Received", "Returned"),
+      type: DataTypes.ENUM(
+        "Give_Request", // Manager requests to give a loan to an employee
+        "Give_Rejected", // Accountant rejects the give request
+        "Given", // Accountant approves and gives the loan
+        "Return_Request", // Manager requests to return an external loan
+        "Return_Rejected", // Accountant rejects the return request
+        "Returned", // Accountant approves and confirms return
+        "Repaid", // Employee repays the loan
+        "Received", // Loan received from an external lender (e.g., bank)
+        "Paid" // Accountant marks loan as paid to external entity
+      ),
       allowNull: false,
+      defaultValue: "Requested",
     },
     receipt: {
       type: DataTypes.STRING,
