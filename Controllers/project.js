@@ -216,7 +216,7 @@ export const deleteProject = async (req, res) => {
 export const addProjectCostEntry = async (req, res) => {
   try {
     const { id } = req.params;
-    const { reason, amount, date, from_account } = req.body;
+    const { reason, amount, date } = req.body;
 
     if (!reason || isNaN(amount)) {
       return res.status(400).json({
@@ -234,15 +234,15 @@ export const addProjectCostEntry = async (req, res) => {
         .json({ success: false, message: "Project not found" });
     }
 
-    const from_acc = await BankAccount.findOne({
-      where: { account_id: from_account, is_deleted: false },
-    });
-    if (!from_acc) {
-      return res.status(404).json({
-        success: false,
-        message: "Bank account not found",
-      });
-    }
+    // const from_acc = await BankAccount.findOne({
+    //   where: { account_id: from_account, is_deleted: false },
+    // });
+    // if (!from_acc) {
+    //   return res.status(404).json({
+    //     success: false,
+    //     message: "Bank account not found",
+    //   });
+    // }
 
     // Correctly initialize structure
     const current = project.actual_cost || {
@@ -290,11 +290,12 @@ export const addProjectCostEntry = async (req, res) => {
       project_id: project.project_id,
       description: `Project cost - ${reason}`,
       receipt,
+      status: "Requested"
     });
 
-    from_acc.balance =
-      Number(from_acc.balance) - Number(amount + amount * 0.02); // Assuming 2% transaction fee
-    await from_acc.save();
+    // from_acc.balance =
+    //   Number(from_acc.balance) - Number(amount + amount * 0.02); // Assuming 2% transaction fee
+    // await from_acc.save();
 
     return res.status(200).json({
       success: true,
