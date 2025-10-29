@@ -93,6 +93,11 @@ const ExpenseRequest = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    status: {
+      type: DataTypes.ENUM("Requested", "Verified", "Approved", "Paid"),
+      allowNull: false,
+      defaultValue: "Requested",
+    },
     requested_by: {
       type: DataTypes.INTEGER,
       allowNull: false,
