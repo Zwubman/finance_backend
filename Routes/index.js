@@ -23,6 +23,6 @@ router.use("/loans", loanRoutes);
 router.use("/incomes", incomeRoutes);
 router.use("/expenses", expenseRoutes);
 router.use("/assets", assetRoutes);
-router.use("/report", reportRoutes);
+router.use("/reports", reportRoutes);
 
 export default router;

@@ -1,3 +1,4 @@
+import { Op } from "sequelize";
 import Income from "../Models/income.js";
 import Expense from "../Models/expense.js";
 import AccountTransfer from "../Models/account_transfer.js";
@@ -46,7 +47,7 @@ export const getReport = async (req, res) => {
       (total, income) => total + income.amount,
       0
     );
-    const total_maintenance = maintenance.reduce(
+    const total_maintenance = maintenance_income.reduce(
       (total, income) => total + income.amount,
       0
     );
@@ -171,8 +172,6 @@ export const getReport = async (req, res) => {
       total_finance_expense +
       total_travel_expense +
       total_project_expense +
-      total_employee_loan_expense +
-      total_external_loan_expense +
       total_asset_purchase_expense +
       total_other_expense;
 
@@ -184,10 +183,10 @@ export const getReport = async (req, res) => {
       where: { account_name: "Vault", is_deleted: false },
     });
 
-    const from_peal = await AccountTransfer.findOne({
+    const from_peal = await AccountTransfer.findAll({
       where: { from_account: acc_1.account_id, is_deleted: false },
     });
-    const to_peal = await AccountTransfer.findOne({
+    const to_peal = await AccountTransfer.findAll({
       where: { to_account: acc_1.account_id, is_deleted: false },
     });
 
@@ -251,12 +250,6 @@ export const getReport = async (req, res) => {
       (total, loan) => total + loan.amount + loan.penalty + (loan.amount * interest_rate)/100,
       0
     )
-    
-
-    const project = await Project.findAll({
-      where: { is_deleted: false },
-    });
-
 
     res.status(200).json({
       success: true,
@@ -270,8 +263,8 @@ export const getReport = async (req, res) => {
           subscription_income,
           total_subscription_income,
         },
-        maintenance: {
-          maintenance,
+        maintenance_income: {
+          maintenance_income,
           total_maintenance,
         },
         training_workshops_income: {
@@ -350,8 +343,6 @@ export const getReport = async (req, res) => {
           repaid_loan,
           total_repaid_loan,
         },
-
-        project,
       },
     });
   } catch (error) {
