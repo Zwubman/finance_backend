@@ -15,21 +15,29 @@ const ExpenseRequest = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    employee_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "employees",
+        key: "employee_id",
+      },
+    },
     place_of_origin: {
       type: DataTypes.STRING,
       allowNull: true,
     },
     place_to_travel: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     departure_date: {
       type: DataTypes.DATE,
-      allowNull: false,
+      allowNull: true,
     },
     arrival_date: {
       type: DataTypes.DATE,
-      allowNull: false,
+      allowNull: true,
     },
     split_transportation: {
       type: DataTypes.STRING,
@@ -94,21 +102,13 @@ const ExpenseRequest = sequelize.define(
       allowNull: true,
     },
     status: {
-      type: DataTypes.ENUM("Requested", "Verified", "Approved", "Paid"),
+      type: DataTypes.ENUM("Requested", "Approved", "Rejected", "Paid"),
       allowNull: false,
       defaultValue: "Requested",
     },
     requested_by: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      references: {
-        model: "users",
-        key: "user_id",
-      },
-    },
-    verified_by: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
       references: {
         model: "users",
         key: "user_id",
@@ -132,9 +132,6 @@ const ExpenseRequest = sequelize.define(
 
 ExpenseRequest.belongsTo(User, { foreignKey: "requested_by", as: "requester" });
 User.hasMany(ExpenseRequest, { foreignKey: "requested_by", as: "requester" });
-
-ExpenseRequest.belongsTo(User, { foreignKey: "verified_by", as: "verifier" });
-User.hasMany(ExpenseRequest, { foreignKey: "verified_by", as: "verifier" });
 
 ExpenseRequest.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
 User.hasMany(ExpenseRequest, { foreignKey: "approved_by", as: "approver" });

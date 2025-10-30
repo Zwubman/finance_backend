@@ -10,6 +10,7 @@ import expenseRoutes from "./expense.js";
 import assetRoutes from "./asset.js";
 import budgetPlanRoutes from "./budget_plan.js";
 import reportRoutes from "./report.js";
+import expenseRequestRoutes from "./expense_request.js";
 
 const router = express.Router();
 
@@ -18,6 +19,7 @@ router.use("/employees", employeeRoutes);
 router.use("/budget-plans", budgetPlanRoutes);
 router.use("/bank-accounts", bankAccountRoutes);
 router.use("/account-transfers", accountTransferRoutes);
+router.use("/expense-requests", expenseRequestRoutes)
 router.use("/projects", projectRoutes);
 router.use("/loans", loanRoutes);
 router.use("/incomes", incomeRoutes);

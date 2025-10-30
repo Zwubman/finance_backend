@@ -26,6 +26,7 @@ const Expense = sequelize.define(
         "Expense for employee loan",
         "Expense for returning external loan",
         "Expense for asset purchase",
+        "Allowance expense",
         "Other"
       ),
       allowNull: false,
