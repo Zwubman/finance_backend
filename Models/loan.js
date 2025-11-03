@@ -58,10 +58,10 @@ const Loan = sequelize.define(
         "Returned", // Accountant approves and confirms return
         "Repaid", // Employee repays the loan
         "Received", // Loan received from an external lender (e.g., bank)
-        "Paid" // Accountant marks loan as paid to external entity
+        "Paid" // Cashier marks loan as paid to external entity
       ),
       allowNull: false,
-      defaultValue: "Requested",
+      defaultValue: "Give_Request",
     },
     receipt: {
       type: DataTypes.STRING,

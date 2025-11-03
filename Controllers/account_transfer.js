@@ -117,7 +117,7 @@ export const getAllAccountTransfers = async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
 
-    const { count, rows: transfers } = await AccountTransfer.findAll({
+    const { count, rows: transfers } = await AccountTransfer.findAndCountAll({
       where: { is_deleted: false },
       include: [
         { model: BankAccount, as: "from_acc" },
@@ -127,6 +127,7 @@ export const getAllAccountTransfers = async (req, res) => {
       limit: parseInt(limit),
       offset: parseInt(offset),
     });
+    console.log("Transfers fetched:", transfers);
 
     return res.status(200).json({
       success: true,

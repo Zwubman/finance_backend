@@ -30,15 +30,28 @@ export const createAsset = async (req, res) => {
       });
     }
 
-    const to_acc = await BankAccount.findOne({
-      where: { account_id: to_account, is_deleted: false },
-    });
-    if (!to_acc) {
-      return res.status(400).json({
-        success: false,
-        message: "Destination bank account not found",
-        data: null,
+    // Only validate destination account for sold assets (destination account
+    // is not required for Bought assets)
+    let to_acc = null;
+    if (transaction_type === "Sold") {
+      if (!to_account) {
+        return res.status(400).json({
+          success: false,
+          message: "Destination bank account is required when selling an asset",
+          data: null,
+        });
+      }
+
+      to_acc = await BankAccount.findOne({
+        where: { account_id: to_account, is_deleted: false },
       });
+      if (!to_acc) {
+        return res.status(400).json({
+          success: false,
+          message: "Destination bank account not found",
+          data: null,
+        });
+      }
     }
 
     const allowedCategories = ["Electronics", "Furniture", "Vehicle", "Other"];
@@ -59,8 +72,12 @@ export const createAsset = async (req, res) => {
       });
     }
 
-    const allowedStatuses = ["Requested", "Received"];
-    if (!allowedStatuses.includes(status)) {
+    // `status` refers to the asset lifecycle state (Available, In-Use, ...)
+    // Ensure it matches the enum defined in Models/asset.js. Previously this
+    // code validated against payment-like statuses which caused valid asset
+    // status values from the frontend (e.g. "Available") to be rejected.
+    const allowedStatuses = ["Available", "In-Use", "Maintenance", "Disposed"];
+    if (status && !allowedStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
         message: `Invalid status. Allowed: ${allowedStatuses.join(", ")}`,
@@ -81,18 +98,17 @@ export const createAsset = async (req, res) => {
     }
 
     let receipt = null;
+    // If asset is sold, a receipt is expected. If not provided, we treat it
+    // as optional but log a warning. If you want to enforce receipt, keep the
+    // check below — currently we'll accept missing receipt.
     if (transaction_type === "Sold") {
       if (req.file) {
-        receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
-          /\\/g,
-          "/"
-        )}`;
-      }else {
-        return res.status(400).json({
-          success: false,
-          message: "Receipt is required when selling an asset",
-          data: null,
-        });
+        receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(/\\/g, "/")}`;
+      } else {
+        // Do not hard-fail here to avoid blocking reads; return a warning
+        // so frontend can surface it via toast if necessary.
+        console.warn("No receipt provided for sold asset. Proceeding without receipt.");
+        receipt = null;
       }
     }
 
@@ -110,7 +126,8 @@ export const createAsset = async (req, res) => {
       payment_status,
     });
 
-    const amount = Number(price) * (quantity);
+    const qty = Number(quantity) || 1;
+    const amount = Number(price) * qty;
     if (transaction_type === "Sold") {
       // Record income from asset sale
       await Income.create({
@@ -135,9 +152,9 @@ export const createAsset = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating asset:", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
+      message: error.message || "Internal server error",
     });
   }
 };
@@ -165,13 +182,7 @@ export const getAllAssets = async (req, res) => {
       offset: parseInt(offset),
     });
 
-    if (assets.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No assets found",
-      });
-    }
-
+    // Return assets (may be empty) with pagination
     res.status(200).json({
       success: true,
       message: "All assets retrieved successfully",
@@ -295,9 +306,11 @@ export const deleteAsset = async (req, res) => {
       });
     }
 
+    // Record who deleted the asset if available on the request
+    const deletedBy = req.user?.user_id || null;
     await asset.update({
       is_deleted: true,
-      deleted_by: deleted_by,
+      deleted_by: deletedBy,
       deleted_at: new Date(),
     });
 

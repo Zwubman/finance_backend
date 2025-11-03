@@ -9,6 +9,20 @@ import fs from "fs";
  */
 export const createExpense = async (req, res) => {
   try {
+    console.log("Request body:", req.body);
+    // Protect against a missing body (e.g. missing body parser or wrong Content-Type)
+    if (!req.body) {
+      console.error(
+        "Request body is undefined. Ensure body-parsing middleware (express.json()/express.urlencoded() or multer) is configured on the server and the client sends the correct Content-Type."
+      );
+      return res.status(400).json({
+        success: false,
+        message:
+          "Request body is missing. Ensure the request includes a body and the server has body-parsing middleware enabled.",
+        data: null,
+      });
+    }
+
     const { expense_reason, specific_reason, amount, description, project_id } =
       req.body;
 
@@ -64,20 +78,23 @@ export const createExpense = async (req, res) => {
     //   });
     // }
 
+    // Ensure numeric amount and include the source account (from_account)
+    const numericAmount = Number(amount);
     const new_expense = await Expense.create({
       expense_reason,
       specific_reason,
-      amount,
+      amount: numericAmount,
       description,
       project_id: project_id || null,
+      from_account: from_acc.account_id,
     });
 
-    // if (new_expense) {
-    //   // Deduct amount from bank account balance with transfer fee
-    //   from_acc.balance =
-    //     Number(from_acc.balance) - Number(amount + amount * 0.02);
-    //   await from_acc.save();
-    // }
+    // If created, deduct amount from the source bank account (including 2% fee)
+    if (new_expense) {
+      from_acc.balance =
+        Number(from_acc.balance) - Number(numericAmount + numericAmount * 0.02);
+      await from_acc.save();
+    }
 
     res.status(201).json({
       success: true,
@@ -371,6 +388,19 @@ export const updateExpenseStatus = async (req, res) => {
       });
     }
 
+    // Fetch expense first
+    const expense = await Expense.findOne({
+      where: { expense_id: id, is_deleted: false },
+    });
+
+    if (!expense) {
+      return res.status(404).json({
+        success: false,
+        message: "Expense not found",
+        data: null,
+      });
+    }
+
     const from_acc = await BankAccount.findOne({
       where: { account_name: "Peal", is_deleted: false },
     });
@@ -382,22 +412,11 @@ export const updateExpenseStatus = async (req, res) => {
       });
     }
 
-    if (from_acc.balance < expense.amount && status === "Approved") {
+    // Only check available balance when trying to mark the expense as Paid
+    if (status === "Paid" && Number(from_acc.balance) < Number(expense.amount)) {
       return res.status(400).json({
         success: false,
         message: "Insufficient balance in the bank account to pay the expense",
-        data: null,
-      });
-    }
-
-    const expense = await Expense.findOne({
-      where: { expense_id: id, is_deleted: false },
-    });
-
-    if (!expense) {
-      return res.status(404).json({
-        success: false,
-        message: "Expense not found",
         data: null,
       });
     }
@@ -428,20 +447,23 @@ export const updateExpenseStatus = async (req, res) => {
 
     
     let from_account = null;
-    if(status === "Paid"){
+    if (status === "Paid") {
       from_account = from_acc.account_id;
     }
 
-    await expense.update({
-      status,
-      receipt,
-      from_account,
-    });
+    // Build update payload but only include fields that are set.
+    // This prevents writing null into non-nullable DB columns like `from_account`.
+    const toUpdate = { status };
+    if (receipt) toUpdate.receipt = receipt;
+    if (from_account !== null) toUpdate.from_account = from_account;
+
+    await expense.update(toUpdate);
 
     if (expense.status === "Paid") {
       // Deduct amount from bank account balance with transfer fee
+      const expenseAmount = Number(expense.amount || 0);
       from_acc.balance =
-        Number(from_acc.balance) - Number(amount + amount * 0.02);
+        Number(from_acc.balance) - (expenseAmount + expenseAmount * 0.02);
       await from_acc.save();
 
       expense.expensed_date = new Date();

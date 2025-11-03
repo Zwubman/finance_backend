@@ -39,6 +39,12 @@ const Project = sequelize.define(
       allowNull: false,
       defaultValue: 0,
     },
+    // total income received for the project
+    total_income: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+    },
     total_estimated_cost: {
       type: DataTypes.FLOAT,
       allowNull: false,

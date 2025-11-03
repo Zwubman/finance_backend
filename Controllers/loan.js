@@ -91,6 +91,7 @@ export const createLoan = async (req, res) => {
       });
     }
 
+    // Normalize and sanitize inputs to avoid sending empty strings to integer/decimal columns
     let receipt = null;
     if (status === "Received" && to_who) {
       if (req.file) {
@@ -101,16 +102,25 @@ export const createLoan = async (req, res) => {
       }
     }
 
+    // Convert empty-string values to null and ensure numeric fields are numbers
+    const cleanedToWho = to_who === "" || to_who === undefined ? null : Number(to_who);
+    const cleanedAmount = amount === "" || amount === undefined ? null : Number(amount);
+    const cleanedInterest =
+      interest_rate === "" || interest_rate === undefined
+        ? null
+        : Number(interest_rate);
+    const cleanedPenalty = penalty === "" || penalty === undefined ? null : Number(penalty);
+
     const loan = await Loan.create({
-      to_who,
+      to_who: cleanedToWho,
       from_whom,
       receipt,
-      amount,
-      interest_rate,
+      amount: cleanedAmount,
+      interest_rate: cleanedInterest,
       start_date,
       end_date,
       purpose,
-      penalty,
+      penalty: cleanedPenalty,
       status,
     });
 
@@ -207,7 +217,7 @@ export const getAllLoans = async (req, res) => {
       where.status = ["Given", "Returned"];
     }
 
-    const { count, rows: loans } = await Loan.findAll({
+    const { count, rows: loans } = await Loan.findAndCountAll({
       where,
       include: [
         {

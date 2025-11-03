@@ -97,6 +97,23 @@ export const createIncome = async (req, res) => {
       await to_acc.save();
     }
 
+    // If income is associated with a project, increment the project's total_income
+    if (new_income && project_id) {
+      try {
+        const project = await Project.findOne({
+          where: { project_id: project_id, is_deleted: false },
+        });
+        if (project) {
+          project.total_income =
+            Number(project.total_income || 0) + Number(amount || 0);
+          await project.save();
+        }
+      } catch (err) {
+        console.error("Failed to update project total_income:", err);
+        // don't block income creation if project update fails; log and continue
+      }
+    }
+
     return res.status(201).json({
       success: true,
       message: "Income record created successfully",
