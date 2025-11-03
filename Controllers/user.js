@@ -272,3 +272,128 @@ export const deleteUser = async (req, res) => {
     });
   }
 };
+
+// --- Profile management ---
+export const getProfile = async (req, res) => {
+  try {
+    const userId = req.user?.user_id || req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized", data: null });
+    }
+
+    const user = await User.findOne({ where: { user_id: userId, is_deleted: false } });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found", data: null });
+    }
+
+    const userData = user.toJSON ? user.toJSON() : { ...user };
+    delete userData.password;
+
+    return res.status(200).json({ success: true, message: "Profile retrieved successfully", data: userData });
+  } catch (error) {
+    console.error("Error in getProfile:", error);
+    return res.status(500).json({ success: false, message: "Server Error", Error: error.message });
+  }
+};
+
+export const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user?.user_id || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized", data: null });
+    }
+
+    const { first_name, middle_name, last_name, email, phone_number } = req.body;
+
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({ success: false, message: "No fields provided for update", data: null });
+    }
+
+    const user = await User.findOne({ where: { user_id: userId, is_deleted: false } });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found", data: null });
+    }
+
+    const to_update = {};
+
+    if (email) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ success: false, message: "Invalid email format", data: null });
+      }
+
+      // check uniqueness excluding current user
+      const existing = await User.findOne({ where: { email, is_deleted: false, user_id: { [Op.ne]: userId } } });
+      if (existing) {
+        return res.status(400).json({ success: false, message: "Email already in use", data: null });
+      }
+
+      to_update.email = email;
+    }
+
+    if (phone_number) {
+      if (!/^\+?[1-9]\d{1,14}$/.test(phone_number)) {
+        return res.status(400).json({ success: false, message: "Invalid phone number format", data: null });
+      }
+
+      const existingPhone = await User.findOne({ where: { phone_number, is_deleted: false, user_id: { [Op.ne]: userId } } });
+      if (existingPhone) {
+        return res.status(400).json({ success: false, message: "Phone number already in use", data: null });
+      }
+
+      to_update.phone_number = phone_number;
+    }
+
+    if (first_name) to_update.first_name = first_name;
+    if (middle_name) to_update.middle_name = middle_name;
+    if (last_name) to_update.last_name = last_name;
+
+    await user.update(to_update);
+
+    const updated = user.toJSON ? user.toJSON() : { ...user };
+    delete updated.password;
+
+    return res.status(200).json({ success: true, message: "Profile updated successfully", data: updated });
+  } catch (error) {
+    console.error("Error in updateProfile:", error);
+    return res.status(500).json({ success: false, message: "Server Error", Error: error.message });
+  }
+};
+
+export const changePassword = async (req, res) => {
+  try {
+    const userId = req.user?.user_id || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized", data: null });
+    }
+
+    const { current_password, new_password, new_password_confirmation } = req.body;
+
+    if (!current_password || !new_password || !new_password_confirmation) {
+      return res.status(400).json({ success: false, message: "All password fields are required", data: null });
+    }
+
+    if (new_password !== new_password_confirmation) {
+      return res.status(400).json({ success: false, message: "New passwords do not match", data: null });
+    }
+
+    const user = await User.findOne({ where: { user_id: userId, is_deleted: false } });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found", data: null });
+    }
+
+    const isMatch = await bcrypt.compare(current_password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: "Current password is incorrect", data: null });
+    }
+
+    const hashed = await bcrypt.hash(new_password, 10);
+    await user.update({ password: hashed });
+
+    return res.status(200).json({ success: true, message: "Password changed successfully", data: null });
+  } catch (error) {
+    console.error("Error in changePassword:", error);
+    return res.status(500).json({ success: false, message: "Server Error", Error: error.message });
+  }
+};
