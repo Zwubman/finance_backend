@@ -1,6 +1,13 @@
 import express from "express";
-import { getUserById, getAllUsers, updateUser, deleteUser, getProfile, updateProfile, changePassword } from "../Controllers/user.js";
-import { authenticate } from "../Middlewares/auth.js";
+import {
+  getUserById,
+  getAllUsers,
+  updateUser,
+  deleteUser,
+  getProfile,
+  updateProfile,
+  changePassword,
+} from "../Controllers/user.js";
 
 const router = express.Router();
 
@@ -8,9 +15,9 @@ const router = express.Router();
 router.get("/", getAllUsers);
 
 // profile routes for current authenticated user (must come before ":id")
-router.get("/profile", authenticate, getProfile);
-router.put("/profile/password", authenticate, changePassword);
-router.put("/profile", authenticate, updateProfile);
+router.get("/profile", getProfile);
+router.put("/profile/password", changePassword);
+router.put("/profile", updateProfile);
 
 // parameterized routes after static routes
 router.get("/:id", getUserById);

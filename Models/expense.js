@@ -17,7 +17,7 @@ const Expense = sequelize.define(
     expense_reason: {
       type: DataTypes.ENUM(
         "Office & Administration",
-        "Employee Costs",
+        "Employee salary costs",
         "Technology and infrastructure",
         "Sales & Marketing",
         "Finance & Legal",

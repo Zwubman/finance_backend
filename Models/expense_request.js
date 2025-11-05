@@ -90,7 +90,7 @@ const ExpenseRequest = sequelize.define(
       allowNull: true,
     },
     allowance_receipt: {
-      type: DataTypes.STRING, 
+      type: DataTypes.STRING,
       allowNull: true,
     },
     bank_account_number: {
@@ -122,6 +122,23 @@ const ExpenseRequest = sequelize.define(
         key: "user_id",
       },
     },
+    is_deleted: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    deleted_by: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "users",
+        key: "user_id",
+      },
+    },
+    deleted_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     tableName: "expense_requests",
@@ -136,8 +153,13 @@ User.hasMany(ExpenseRequest, { foreignKey: "requested_by", as: "requester" });
 ExpenseRequest.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
 User.hasMany(ExpenseRequest, { foreignKey: "approved_by", as: "approver" });
 
-ExpenseRequest.belongsTo(Employee, { foreignKey: "employee_id", as: "employee" });
+ExpenseRequest.belongsTo(Employee, {
+  foreignKey: "employee_id",
+  as: "employee",
+});
 Employee.hasMany(ExpenseRequest, { foreignKey: "employee_id", as: "employee" });
 
+ExpenseRequest.belongsTo(User, { foreignKey: "deleted_by" });
+User.hasMany(ExpenseRequest, { foreignKey: "deleted_by" });
 
 export default ExpenseRequest;

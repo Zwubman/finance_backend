@@ -2,6 +2,7 @@ import Employee from "../Models/employee.js";
 import Project from "../Models/project.js";
 import Expense from "../Models/expense.js";
 import BankAccount from "../Models/bank_account.js";
+import ExpenseRequest from "../Models/expense_request.js";
 
 /**
  * Create a new project
@@ -77,6 +78,7 @@ export const getAllProjects = async (req, res) => {
 
     const { count, rows: projects } = await Project.findAndCountAll({
       where: { is_deleted: false },
+      order: [["createdAt", "DESC"]],
       limit: parseInt(limit),
       offset: parseInt(offset),
     });
@@ -285,8 +287,7 @@ export const addProjectCostEntry = async (req, res) => {
       expense_reason: "Project expenses",
       specific_reason: `Project cost entry for project ID ${id}`,
       amount: Number(amount),
-      expensed_date: date || new Date(),
-      from_account: from_account,
+      expensed_date: new Date(),
       project_id: project.project_id,
       description: `Project cost - ${reason}`,
       receipt,
@@ -390,3 +391,4 @@ export const removeEmployeeFromProject = async (req, res) => {
     });
   }
 };
+
