@@ -13,6 +13,7 @@ import reportRoutes from "./report.js";
 import expenseRequestRoutes from "./expense_request.js";
 import payrollRoutes from "./payroll.js"
 import receivableRoutes from "./receivable.js";
+import payableRoutes from "./payable.js";
 
 const router = express.Router();
 
@@ -30,5 +31,6 @@ router.use("/assets", assetRoutes);
 router.use("/reports", reportRoutes);
 router.use("/payrolls", payrollRoutes);
 router.use("/receivables", receivableRoutes);
+router.use("/payables", payableRoutes);
 
 export default router;
