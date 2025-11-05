@@ -378,6 +378,7 @@ export const updatePayableStatus = async (req, res) => {
         project_id: payable.project_id,
         loan_id: payable.loan_id,
         asset_id: payable.asset_id,
+        status: "Approved",
         receipt,
       });
 
