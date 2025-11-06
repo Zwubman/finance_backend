@@ -1,7 +1,8 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../Config/database.js";
+import User from "./user.js";
+import BankAccount from "./bank_account.js";
 import Employee from "./employee.js";
-import Expense from "./expense.js";
 
 const Payroll = sequelize.define(
   "payroll",
@@ -12,46 +13,28 @@ const Payroll = sequelize.define(
       primaryKey: true,
     },
     employee_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: "employees",
-        key: "employee_id",
-      },
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: "employees",
+            key: "employee_id"
+        }
     },
-    gross_amount: {
-      type: DataTypes.DECIMAL,
-      allowNull: false,
-    },
-    deductions: {
-      type: DataTypes.DECIMAL,
-      allowNull: false,
-      defaultValue: 0,
-    },
-    net_amount: {
-      type: DataTypes.DECIMAL,
-      allowNull: false,
-    },
-    pay_date: {
+    period: {
       type: DataTypes.DATE,
       allowNull: false,
     },
-    status: {
-      type: DataTypes.ENUM("Pending", "Paid", "Cancelled"),
-      allowNull: false,
-      defaultValue: "Pending",
-    },
-    expense_id: {
-      type: DataTypes.INTEGER,
+    deduction: {
+      type: DataTypes.DECIMAL,
       allowNull: true,
-      references: {
-        model: "expenses",
-        key: "expense_id",
-      },
     },
-    recipient_file: {
-      type: DataTypes.STRING,
+    overtime: {
+      type: DataTypes.DECIMAL,
       allowNull: true,
+    },
+    allowances: {
+        type: DataTypes.DECIMAL,
+        allowNull: true,
     },
     is_deleted: {
       type: DataTypes.BOOLEAN,
@@ -78,10 +61,10 @@ const Payroll = sequelize.define(
   }
 );
 
-Payroll.belongsTo(Employee, { foreignKey: "employee_id", as: "employee" });
-Employee.hasMany(Payroll, { foreignKey: "employee_id", as: "payrolls" });
+Payroll.belongsTo(User, { foreignKey: "deleted_by" });
+User.hasMany(Payroll, { foreignKey: "deleted_by" });
 
-Payroll.belongsTo(Expense, { foreignKey: "expense_id", as: "expense" });
-Expense.hasMany(Payroll, { foreignKey: "expense_id", as: "expense_payrolls" });
+Payroll.belongsTo(Employee, { foreignKey: "employee_id", as: "receiver" });
+Employee.hasMany(Payroll, { foreignKey: "employee_id", as: "receiver" });
 
 export default Payroll;

@@ -11,9 +11,10 @@ import "./Models/employee.js";
 import "./Models/expense.js";
 import "./Models/loan.js";
 import "./Models/project.js";
+import "./Models/payroll.js"
 import "./Utils/scheduled_task.js";
 import routes from "./Routes/index.js";
-import { login, logout, refresh } from "./Controllers/auth.js";
+import { login, logout, refresh, verifyLoginOtp } from "./Controllers/auth.js";
 import { authenticate } from "./Middlewares/auth.js";
 import { registerUser } from "./Controllers/user.js";
 import { registerEmployee } from "./Controllers/employee.js";
@@ -36,6 +37,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 app.post("/login", login);
+app.post("/verify-otp", verifyLoginOtp);
 app.post("/logout", logout);
 app.post("/refresh", refresh);
 

@@ -20,23 +20,27 @@ export const registerEmployee = async (req, res) => {
     } = req.body;
 
     // validation
-    if (
-      !first_name ||
-      !middle_name ||
-      !last_name ||
-      !gender ||
-      !email ||
-      !password ||
-      !password_confirmation ||
-      !phone_number ||
-      !department ||
-      !position ||
-      !salary ||
-      !hired_date
-    ) {
+    const required_fields = [
+      "first_name",
+      "middle_name",
+      "last_name",
+      "gender",
+      "email",
+      "password",
+      "password_confirmation",
+      "phone_number",
+      "department",
+      "position",
+      "salary",
+      "hired_date",
+    ];
+
+    const missingFields = required_fields.filter((field) => !req.body[field]);
+
+    if (missingFields.length > 0) {
       return res.status(400).json({
         success: false,
-        message: "All fields are required",
+        message: `Missing required field(s): ${missingFields.join(", ")}`,
         data: null,
       });
     }
@@ -147,7 +151,7 @@ export const getEmployeeById = async (req, res) => {
 
 export const getAllEmployees = async (req, res) => {
   try {
-    const { page = 1, limit = 10, } = req.query;
+    const { page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
 
     const { count, rows: employees } = await Employee.findAndCountAll({
