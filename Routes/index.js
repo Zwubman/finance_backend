@@ -7,6 +7,7 @@ import bankAccountRoutes from "./bank_account.js";
 import accountTransferRoutes from "./account_transfer.js";
 import incomeRoutes from "./income.js";
 import expenseRoutes from "./expense.js";
+import payrollRoutes from "./payroll.js";
 import assetRoutes from "./asset.js";
 import budgetPlanRoutes from "./budget_plan.js";
 import reportRoutes from "./report.js";
@@ -24,6 +25,7 @@ router.use("/projects", projectRoutes);
 router.use("/loans", loanRoutes);
 router.use("/incomes", incomeRoutes);
 router.use("/expenses", expenseRoutes);
+router.use("/payrolls", payrollRoutes);
 router.use("/assets", assetRoutes);
 router.use("/reports", reportRoutes);
 
