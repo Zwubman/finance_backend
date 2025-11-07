@@ -3,6 +3,7 @@ import Project from "../Models/project.js";
 import Expense from "../Models/expense.js";
 import BankAccount from "../Models/bank_account.js";
 import ExpenseRequest from "../Models/expense_request.js";
+import Income from "../Models/income.js";
 
 /**
  * Create a new project
@@ -78,15 +79,38 @@ export const getAllProjects = async (req, res) => {
 
     const { count, rows: projects } = await Project.findAndCountAll({
       where: { is_deleted: false },
+      include: [
+        {
+          model: Income,
+          as: "from_project", 
+          where: { is_deleted: false },
+          required: false, 
+        },
+      ],
       order: [["createdAt", "DESC"]],
       limit: parseInt(limit),
       offset: parseInt(offset),
     });
 
+    // Transform data: add total_income + all income details
+    const projectsWithIncomeDetails = projects.map((project) => {
+      const incomes = project.from_project || [];
+      const totalIncome = incomes.reduce(
+        (sum, income) => sum + parseFloat(income.amount || 0),
+        0
+      );
+
+      return {
+        ...project.toJSON(),
+        income_details: incomes, 
+        total_income: totalIncome,
+      };
+    });
+
     res.status(200).json({
       success: true,
       message: "Projects retrieved successfully",
-      data: projects,
+      data: projectsWithIncomeDetails,
       pagination: {
         total: count,
         page: parseInt(page),
@@ -110,6 +134,14 @@ export const getProjectById = async (req, res) => {
     const { id } = req.params;
     const project = await Project.findOne({
       where: { project_id: id, is_deleted: false },
+      include: [
+        {
+          model: Income,
+          as: "from_project", //  this alias is valid even when fetching from Project
+          where: { is_deleted: false },
+          required: false, // keeps projects with no incomes
+        },
+      ],
     });
 
     if (!project) {
@@ -291,7 +323,7 @@ export const addProjectCostEntry = async (req, res) => {
       project_id: project.project_id,
       description: `Project cost - ${reason}`,
       receipt,
-      status: "Requested"
+      status: "Requested",
     });
 
     // from_acc.balance =
@@ -391,4 +423,3 @@ export const removeEmployeeFromProject = async (req, res) => {
     });
   }
 };
-
