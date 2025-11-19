@@ -3,8 +3,10 @@ import Employee from "../Models/employee.js";
 import Project from "../Models/project.js";
 import ExpenseRequest from "../Models/expense_request.js";
 import Expense from "../Models/expense.js";
+import BankAccount from "../Models/bank_account.js";
 import { Op } from "sequelize";
 import { Sequelize } from "sequelize";
+import sequelize from "../Config/database.js";
 
 export const createPayroll = async (req, res) => {
   try {
@@ -84,19 +86,53 @@ export const createPayroll = async (req, res) => {
       Number(overtime || 0) -
       Number(deduction || 0);
 
-    const payroll = await Payroll.create({
-      employee_id,
-      period,
-      deduction,
-      overtime,
-    });
 
-    if (payroll) {
-      await Expense.create({
-        expense_reason: "Employee salary costs",
-        specific_reason: `Pay salary for employee: ${employee.first_name} ${employee.middle_name} `,
-        amount: net_pay,
+    // use a transaction so payroll and associated expense are created atomically
+    const t = await sequelize.transaction();
+    try {
+      const payroll = await Payroll.create(
+        {
+          employee_id,
+          period,
+          deduction,
+          overtime,
+        },
+        { transaction: t }
+      );
+
+      // find a source bank account (Vault) to attach to the expense
+      const from_acc = await BankAccount.findOne({ where: { account_name: "Vault", is_deleted: false } });
+      if (!from_acc) {
+        await t.rollback();
+        return res.status(400).json({ success: false, message: "Source bank account 'Vault' not found. Create a bank account named 'Vault' before creating payroll.", data: null });
+      }
+
+      await Expense.create(
+        {
+          expense_reason: "Employee salary costs",
+          specific_reason: `Pay salary for employee: ${employee.first_name} ${employee.middle_name} `,
+          amount: net_pay,
+          from_account: from_acc.account_id,
+          status: "Requested",
+        },
+        { transaction: t }
+      );
+
+      await t.commit();
+
+      res.status(201).json({
+        success: true,
+        message: "Payroll created successfully.",
+        data: {
+          payroll,
+          net_pay,
+        },
       });
+      return;
+    } catch (err) {
+      await t.rollback();
+      console.error("Error creating payroll (transaction):", err);
+      return res.status(500).json({ success: false, message: "Server Error", data: null });
     }
 
     res.status(201).json({

@@ -35,6 +35,7 @@ export const login = async (req, res) => {
 
     // Generate OTP for login
     const otp = generateOtp();
+    console.log(`Generated OTP for login ${email}: ${otp}`);
     await redisClient.set(`loginOtp:${email}`, otp, { EX: 300 });
     console.log(`Stored OTP for login ${email}: ${otp}`);
 

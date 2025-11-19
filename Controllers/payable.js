@@ -99,7 +99,12 @@ export const getAllPayables = async (req, res) => {
 
     const where = { is_deleted: false };
 
-    const { count, rows: payables } = await Payable.findAll({
+    // Ensure page and limit are integers
+    const pageInt = Number.isNaN(Number(page)) ? 1 : parseInt(page, 10);
+    const limitInt = Number.isNaN(Number(limit)) ? 10 : parseInt(limit, 10);
+    const offsetInt = (pageInt - 1) * limitInt;
+
+    const { count, rows: payables } = await Payable.findAndCountAll({
       where,
       include: [
         { model: Project, as: "for_projects" },
@@ -107,11 +112,11 @@ export const getAllPayables = async (req, res) => {
         { model: Asset, as: "for_assets" },
       ],
       order: [["createdAt", "DESC"]],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
+      limit: limitInt,
+      offset: offsetInt,
     });
 
-    if (payables.length === 0) {
+    if (!payables || payables.length === 0) {
       return res.status(404).json({
         success: false,
         message: "Payables not found",
@@ -125,9 +130,9 @@ export const getAllPayables = async (req, res) => {
       data: payables,
       pagination: {
         total: count,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(count / limit),
+        page: pageInt,
+        limit: limitInt,
+        totalPages: Math.ceil(count / limitInt),
       },
     });
   } catch (error) {
