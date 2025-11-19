@@ -348,7 +348,7 @@ export const getReport = async (req, res) => {
   } catch (error) {
     console.error("Error in getReport:", error);
     res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };

@@ -103,11 +103,16 @@ export const createAsset = async (req, res) => {
     // check below — currently we'll accept missing receipt.
     if (transaction_type === "Sold") {
       if (req.file) {
-        receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(/\\/g, "/")}`;
+        receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
+          /\\/g,
+          "/"
+        )}`;
       } else {
         // Do not hard-fail here to avoid blocking reads; return a warning
         // so frontend can surface it via toast if necessary.
-        console.warn("No receipt provided for sold asset. Proceeding without receipt.");
+        console.warn(
+          "No receipt provided for sold asset. Proceeding without receipt."
+        );
         receipt = null;
       }
     }
@@ -154,7 +159,7 @@ export const createAsset = async (req, res) => {
     console.error("Error creating asset:", error);
     return res.status(400).json({
       success: false,
-      message: error.message || "Internal server error",
+      message: error.message,
     });
   }
 };
@@ -169,9 +174,9 @@ export const getAllAssets = async (req, res) => {
     const role = req.user.role;
 
     const where = { is_deleted: false };
-    if(role === "Accountant"){
+    if (role === "Accountant") {
       where.payment_status = ["Requested", "Approved", "Rejected"];
-    }else if(role === "Cashier"){
+    } else if (role === "Cashier") {
       where.payment_status = "Approved";
     }
 
@@ -196,9 +201,7 @@ export const getAllAssets = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching assets:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -225,9 +228,7 @@ export const getAssetById = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching asset by ID:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -321,9 +322,9 @@ export const deleteAsset = async (req, res) => {
     });
   } catch (error) {
     console.error("Error deleting asset:", error);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      message: "Internal server error",
+      message: error.message,
     });
   }
 };
@@ -444,9 +445,9 @@ export const updateAssetPaymentStatus = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating asset payment status:", error);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      message: "Internal server error",
+      message: error.message,
     });
   }
 };

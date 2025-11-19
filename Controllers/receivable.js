@@ -97,10 +97,9 @@ export const createReceivable = async (req, res) => {
     });
   } catch (error) {
     console.log("Error in create receivable:", error);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      message: "Internal Server Error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -146,10 +145,9 @@ export const getAllReceivable = async (req, res) => {
     });
   } catch (error) {
     console.log("Error in get receivable:", error);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      message: "Internal Server Error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -185,10 +183,9 @@ export const getReceivableById = async (req, res) => {
     });
   } catch (error) {
     console.log("Error in get receivable:", error);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -286,10 +283,9 @@ export const deleteReceivable = async (req, res) => {
     });
   } catch (error) {
     console.error("Error deleting receivable record:", error);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -409,10 +405,9 @@ export const updateReceivableStatus = async (req, res) => {
     });
   } catch (error) {
     console.log("Error in update receivable:", error);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      message: "Error in create receivable",
-      data: null,
+      message: error.message,
     });
   }
 };

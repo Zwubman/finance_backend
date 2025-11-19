@@ -69,10 +69,9 @@ export const createExpenseRequest = async (req, res) => {
     });
   } catch (error) {
     console.log("Error in creating expense request:", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -123,8 +122,8 @@ export const getAllExpenseRequests = async (req, res) => {
   } catch (error) {
     console.error("Error in get all expense requests:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Internal server error", data: null });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -154,8 +153,8 @@ export const getExpenseRequestById = async (req, res) => {
   } catch (error) {
     console.error("Error in get expense request by id:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Internal server error", data: null });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -191,8 +190,8 @@ export const deleteExpenseRequest = async (req, res) => {
   } catch (error) {
     console.error("Error in delete expense request:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Internal server error", data: null });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -277,8 +276,8 @@ export const updateExpenseRequest = async (req, res) => {
   } catch (error) {
     console.error("Error in update expense request:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Internal server error", data: null });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -407,7 +406,7 @@ export const updateExpenseRequestStatus = async (req, res) => {
   } catch (error) {
     console.error("Error in update expense request status:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Internal server error", data: null });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };

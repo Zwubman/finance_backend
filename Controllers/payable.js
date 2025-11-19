@@ -81,10 +81,9 @@ export const createPayable = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -132,10 +131,9 @@ export const getAllPayables = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -171,10 +169,9 @@ export const getPayableById = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -210,10 +207,9 @@ export const deletePayable = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -254,10 +250,9 @@ export const updatePayable = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in update payable", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -393,10 +388,9 @@ export const updatePayableStatus = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in update payable status", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };

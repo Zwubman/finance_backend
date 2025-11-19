@@ -149,8 +149,8 @@ export const createLoan = async (req, res) => {
   } catch (error) {
     console.error("Error in create loan:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Server Error", Error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -193,8 +193,8 @@ export const getLoanById = async (req, res) => {
   } catch (error) {
     console.error("Error in get loan by id:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Server Error", Error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -258,8 +258,8 @@ export const getAllLoans = async (req, res) => {
   } catch (error) {
     console.error("Error in get all loans:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Server Error", Error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -342,10 +342,9 @@ export const updateLoan = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -385,10 +384,9 @@ export const deleteLoan = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -574,10 +572,9 @@ export const updateLoanStatus = async (req, res) => {
     }
   } catch (error) {
     console.error("Error in update loan status:", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
       message: error.message,
-      data: null,
     });
   }
 };

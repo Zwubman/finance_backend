@@ -45,8 +45,8 @@ export const createBankAccount = async (req, res) => {
   } catch (error) {
     console.error("Error in create bank account:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Server Error", Error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -73,8 +73,8 @@ export const getBankAccountById = async (req, res) => {
   } catch (error) {
     console.error("Error in get bank account by id:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Server Error", Error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -107,8 +107,8 @@ export const getAllBankAccounts = async (req, res) => {
   } catch (error) {
     console.error("Error in get all bank accounts:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Server Error", Error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -167,10 +167,9 @@ export const updateBankAccount = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -207,10 +206,9 @@ export const deleteBankAccount = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };

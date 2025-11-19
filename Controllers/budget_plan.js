@@ -41,8 +41,8 @@ export const createBudgetPlan = async (req, res) => {
   } catch (error) {
     console.error("Error in create budget plan:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Server Error", Error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -75,8 +75,8 @@ export const getAllBudgetPlans = async (req, res) => {
   } catch (error) {
     console.error("Error in get all budget plans:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Server Error", Error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -106,8 +106,8 @@ export const getBudgetPlanById = async (req, res) => {
   } catch (error) {
     console.error("Error in get budget plan by ID:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Server Error", Error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -157,8 +157,8 @@ export const updateBudgetPlan = async (req, res) => {
   } catch (error) {
     console.error("Error in update budget plan:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Server Error", Error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -195,7 +195,7 @@ export const deleteBudgetPlan = async (req, res) => {
   } catch (error) {
     console.error("Error in delete budget plan:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Server Error", Error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };

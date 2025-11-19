@@ -92,8 +92,8 @@ export const registerUser = async (req, res) => {
   } catch (error) {
     console.error("Error in registerUser:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Server Error", Error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -120,8 +120,8 @@ export const getUserById = async (req, res) => {
   } catch (error) {
     console.error("Error in getUserById:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Server Error", Error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
