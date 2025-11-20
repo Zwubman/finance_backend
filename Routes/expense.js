@@ -12,7 +12,7 @@ import upload from "../Middlewares/upload.js";
 
 const router = express.Router();
 
-router.post("/", requireRole("Manager"), createExpense);
+router.post("/", requireRole("Manager"), upload.single("receipt"), createExpense);
 router.put(
   "/:id/status",
   requireRole("Accountant", "Cashier"),

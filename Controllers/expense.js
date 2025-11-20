@@ -64,19 +64,11 @@ export const createExpense = async (req, res) => {
         });
       }
     }
-    // let receipt = null;
-    // if (req.file) {
-    //   receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
-    //     /\\/g,
-    //     "/"
-    //   )}`;
-    // } else {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Receipt is required for the expense",
-    //     data: null,
-    //   });
-    // }
+    // Attach receipt URL when a file was uploaded (optional)
+    let receipt = null;
+    if (req.file && req.file.path) {
+      receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(/\\/g, "/")}`;
+    }
 
     // Ensure numeric amount and include the source account (from_account)
     const numericAmount = Number(amount);
@@ -85,6 +77,7 @@ export const createExpense = async (req, res) => {
       specific_reason,
       amount: numericAmount,
       description,
+      receipt,
       project_id: project_id || null,
       from_account: from_acc.account_id,
     });

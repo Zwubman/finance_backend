@@ -167,10 +167,23 @@ export const getProjectById = async (req, res) => {
       });
     }
 
+    // Mirror the listing endpoint: include income details and total_income
+    const incomes = project.from_project || [];
+    const totalIncome = incomes.reduce(
+      (sum, income) => sum + parseFloat(income.amount || 0),
+      0
+    );
+
+    const responseData = {
+      ...project.toJSON(),
+      income_details: incomes,
+      total_income: totalIncome,
+    };
+
     res.status(200).json({
       success: true,
       message: "Project retrieved successfully",
-      data: project,
+      data: responseData,
     });
   } catch (error) {
     console.error("Error in getProjectById:", error);
