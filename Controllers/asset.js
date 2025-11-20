@@ -31,27 +31,39 @@ export const createAsset = async (req, res) => {
       });
     }
 
-    // Validate source account for bought assets
-    //   let from_acc = null
-    //  if(transaction_type === "Bought"){
-    //   if(!from_account){
-    //     return res.status(400).json({
-    //       success: false,
-    //       message: "Source bank account is required when buying an asset",
-    //       data: null,
-    //     });
-    //   }
-    //    from_acc = await BankAccount.findOne({
-    //     where: { account_id: from_account, is_deleted: false },
-    //   });
-    //   if (!from_acc) {
-    //     return res.status(400).json({
-    //       success: false,
-    //       message: "Source bank account not found",
-    //       data: null,
-    //     });
-    //   }
-    // }
+    // Determine source account for Bought assets. If `from_account` was
+    // provided by the client we'll use it; otherwise default to the
+    // `Vault` account. The `expenses` table requires `from_account` non-null,
+    // so ensure we always resolve a valid account when recording the
+    // purchase expense.
+    let from_acc = null;
+    if (transaction_type === "Bought") {
+      if (from_account) {
+        from_acc = await BankAccount.findOne({
+          where: { account_id: from_account, is_deleted: false },
+        });
+        if (!from_acc) {
+          return res.status(400).json({
+            success: false,
+            message: "Source bank account not found",
+            data: null,
+          });
+        }
+      } else {
+        // fall back to Vault account when no explicit from_account provided
+        from_acc = await BankAccount.findOne({
+          where: { account_name: "Vault", is_deleted: false },
+        });
+        if (!from_acc) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Source bank account not found (no from_account provided and Vault account missing)",
+            data: null,
+          });
+        }
+      }
+    }
 
     // Only validate destination account for sold assets (destination account
     // is not required for Bought assets)
@@ -172,22 +184,32 @@ export const createAsset = async (req, res) => {
       to_acc.balance = Number(to_acc.balance) + Number(amount);
       await to_acc.save();
     } else if (transaction_type === "Bought") {
-      await Expense.create({
+      const createdExpense = await Expense.create({
         expense_reason: "Expense for asset purchase",
         specific_reason: `Purchased asset: ${asset.name}`,
         description: `Purchase ${asset.quantity} unit(s) of ${asset.name}`,
         amount: Number(asset.price) * asset.quantity,
         expensed_date: new Date(),
         asset_id: asset.asset_id,
+        from_account: from_acc.account_id,
         status: "Requested",
         receipt,
       });
+
       from_acc.balance =
         Number(from_acc.balance) -
         Number(
           asset.price * asset.quantity + asset.price * asset.quantity * 0.02
         ); // Including 5% transaction fee
       await from_acc.save();
+
+      // Expose the created expense so frontend can immediately show it
+      console.log("Created expense for bought asset:", createdExpense.toJSON());
+      return res.status(201).json({
+        success: true,
+        message: "Asset created successfully with appropriate financial records",
+        data: { asset, expense: createdExpense },
+      });
     }
 
     return res.status(201).json({
@@ -213,12 +235,11 @@ export const getAllAssets = async (req, res) => {
     const offset = (page - 1) * limit;
     const role = req.user.role;
 
+    // Currently the Asset model does not have a `payment_status` column
+    // (it was commented out in the model). Avoid filtering by that column
+    // to prevent DB errors. If you later add `payment_status` to the model
+    // you can reintroduce role-based filtering here.
     const where = { is_deleted: false };
-    if (role === "Accountant") {
-      where.payment_status = ["Requested", "Approved", "Rejected"];
-    } else if (role === "Cashier") {
-      where.payment_status = "Approved";
-    }
 
     const { count, rows: assets } = await Asset.findAndCountAll({
       where,
