@@ -399,6 +399,7 @@ export const deleteLoan = async (req, res) => {
  * Cashier can mark Given and Returned loans as Paid
  */
 export const updateLoanStatus = async (req, res) => {
+  console.log(req)
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -420,7 +421,7 @@ export const updateLoanStatus = async (req, res) => {
     }
 
     if (role === "Accountant") {
-      allowedStatus = ["Give_Rejected", "Return_Rejected", "Given", "Returned"];
+      const allowedStatus = ["Give_Rejected", "Return_Rejected", "Given", "Returned"];
       if (!allowedStatus.includes(status)) {
         return res.status(403).json({
           success: false,
@@ -572,6 +573,14 @@ export const updateLoanStatus = async (req, res) => {
         );
       await from_acc.save();
     }
+
+    // Respond with success and the updated loan
+    const updatedLoan = await loan.reload();
+    return res.status(200).json({
+      success: true,
+      message: "Loan status updated successfully",
+      data: updatedLoan,
+    });
   } catch (error) {
     console.error("Error in update loan status:", error);
     return res.status(500).json({

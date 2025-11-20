@@ -2,6 +2,7 @@ import sequelize from "../Config/database.js";
 import BankAccount from "../Models/bank_account.js";
 import AccountTransfer from "../Models/account_transfer.js";
 import fs from "fs";
+import { requireFile } from "../Utils/validate_request.js";
 
 export const createAccountTransfer = async (req, res) => {
   const t = await sequelize.transaction(); // Start a transaction
@@ -56,6 +57,16 @@ export const createAccountTransfer = async (req, res) => {
     const fromBalance = parseFloat(fromAcc.balance);
     const transferAmount = parseFloat(amount);
 
+    if (Number.isNaN(transferAmount) || transferAmount <= 0) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: "Invalid transfer amount", data: null });
+    }
+
+    if (!transfer_date || Number.isNaN(Date.parse(transfer_date))) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: "Invalid transfer_date", data: null });
+    }
+
     if (fromBalance < transferAmount) {
       await t.rollback();
       return res.status(400).json({
@@ -63,6 +74,12 @@ export const createAccountTransfer = async (req, res) => {
         message: "Insufficient balance in the from account",
         data: null,
       });
+    }
+
+    // Ensure receipt file is present (DB requires non-null receipt)
+    if (!requireFile(req, res, "receipt", "Receipt is required for account transfer")) {
+      await t.rollback();
+      return;
     }
 
     let receipt = null;
@@ -82,7 +99,7 @@ export const createAccountTransfer = async (req, res) => {
         description,
         transfer_date,
         purpose,
-        receipt,
+        receipt: `${req.protocol}://${req.get("host")}/${req.file.path.replace(/\\/g, "/")}`,
       },
       { transaction: t }
     );

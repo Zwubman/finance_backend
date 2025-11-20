@@ -301,7 +301,7 @@ export const updatePayableStatus = async (req, res) => {
         is_deleted: false,
       },
     });
-    if (from_acc) {
+    if (!from_acc) {
       return res.status(400).json({
         success: false,
         message: "Source bank account not found",

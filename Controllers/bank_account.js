@@ -26,6 +26,25 @@ export const createBankAccount = async (req, res) => {
         data: null,
       });
     }
+    
+      // Validate enum-like fields early to return 400 instead of DB errors
+      const allowedAccountNames = ["Vault", "Peal"];
+      if (!allowedAccountNames.includes(account_name)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid account_name. Allowed: ${allowedAccountNames.join(", ")}`,
+          data: null,
+        });
+      }
+
+      const allowedAccountTypes = ["Checking", "Savings", "Credit"];
+      if (!allowedAccountTypes.includes(account_type)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid account_type. Allowed: ${allowedAccountTypes.join(", ")}`,
+          data: null,
+        });
+      }
 
     const bank_account = await BankAccount.create({
       account_name,

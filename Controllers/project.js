@@ -22,9 +22,25 @@ export const createProject = async (req, res) => {
 
     // Validation
     if (!project_name || !start_date || !expected_end_date || !budget) {
+      console.log(project_name , start_date , expected_end_date , budget)
       return res.status(400).json({
         success: false,
         message: "Missing required fields",
+      });
+    }
+
+    // Ensure project name is unique (case-insensitive)
+    const existing = await Project.findOne({
+      where: {
+        project_name: project_name.trim(),
+        is_deleted: false,
+      },
+    });
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: "A project with the same name already exists",
+        data: null,
       });
     }
 
