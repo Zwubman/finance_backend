@@ -36,10 +36,10 @@ const Asset = sequelize.define(
       allowNull: false,
       defaultValue: "Available",
     },
-    payment_status: {
-      type: DataTypes.ENUM("Requested", "Approved", "Rejected", "Paid", "Received"),
-      allowNull: false,
-    },
+    // payment_status: {
+    //   type: DataTypes.ENUM("Requested", "Approved", "Rejected", "Paid", "Received"),
+    //   allowNull: false,
+    // },
     purchase_date: {
       type: DataTypes.DATE,
       allowNull: true, 

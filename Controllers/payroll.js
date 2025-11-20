@@ -145,9 +145,9 @@ export const createPayroll = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating payroll:", error);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      message: "Server Error",
+      message: error.message,
     });
   }
 };
@@ -179,9 +179,9 @@ export const getAllPayrolls = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in get all payrolls:", error);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      message: "Server Error",
+      message: error.message,
     });
   }
 };
@@ -208,10 +208,9 @@ export const getPayrollById = async(req, res) => {
     });
   } catch (error) {
     console.error("Error retrieving payroll record:", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -244,10 +243,9 @@ export const deletePayroll = async(req, res) => {
     });
   } catch (error) {
     console.error("Error deleting payroll record:", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 }

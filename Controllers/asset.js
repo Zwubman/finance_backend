@@ -19,6 +19,7 @@ export const createAsset = async (req, res) => {
       price,
       vendor,
       to_account,
+      from_account,
       status,
     } = req.body;
 
@@ -29,6 +30,28 @@ export const createAsset = async (req, res) => {
         message: "Missing required fields",
       });
     }
+
+    // Validate source account for bought assets
+    //   let from_acc = null
+    //  if(transaction_type === "Bought"){
+    //   if(!from_account){
+    //     return res.status(400).json({
+    //       success: false,
+    //       message: "Source bank account is required when buying an asset",
+    //       data: null,
+    //     });
+    //   }
+    //    from_acc = await BankAccount.findOne({
+    //     where: { account_id: from_account, is_deleted: false },
+    //   });
+    //   if (!from_acc) {
+    //     return res.status(400).json({
+    //       success: false,
+    //       message: "Source bank account not found",
+    //       data: null,
+    //     });
+    //   }
+    // }
 
     // Only validate destination account for sold assets (destination account
     // is not required for Bought assets)
@@ -103,11 +126,16 @@ export const createAsset = async (req, res) => {
     // check below — currently we'll accept missing receipt.
     if (transaction_type === "Sold") {
       if (req.file) {
-        receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(/\\/g, "/")}`;
+        receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
+          /\\/g,
+          "/"
+        )}`;
       } else {
         // Do not hard-fail here to avoid blocking reads; return a warning
         // so frontend can surface it via toast if necessary.
-        console.warn("No receipt provided for sold asset. Proceeding without receipt.");
+        console.warn(
+          "No receipt provided for sold asset. Proceeding without receipt."
+        );
         receipt = null;
       }
     }
@@ -143,6 +171,23 @@ export const createAsset = async (req, res) => {
 
       to_acc.balance = Number(to_acc.balance) + Number(amount);
       await to_acc.save();
+    } else if (transaction_type === "Bought") {
+      await Expense.create({
+        expense_reason: "Expense for asset purchase",
+        specific_reason: `Purchased asset: ${asset.name}`,
+        description: `Purchase ${asset.quantity} unit(s) of ${asset.name}`,
+        amount: Number(asset.price) * asset.quantity,
+        expensed_date: new Date(),
+        asset_id: asset.asset_id,
+        status: "Requested",
+        receipt,
+      });
+      from_acc.balance =
+        Number(from_acc.balance) -
+        Number(
+          asset.price * asset.quantity + asset.price * asset.quantity * 0.02
+        ); // Including 5% transaction fee
+      await from_acc.save();
     }
 
     return res.status(201).json({
@@ -154,7 +199,7 @@ export const createAsset = async (req, res) => {
     console.error("Error creating asset:", error);
     return res.status(400).json({
       success: false,
-      message: error.message || "Internal server error",
+      message: error.message,
     });
   }
 };
@@ -169,9 +214,9 @@ export const getAllAssets = async (req, res) => {
     const role = req.user.role;
 
     const where = { is_deleted: false };
-    if(role === "Accountant"){
+    if (role === "Accountant") {
       where.payment_status = ["Requested", "Approved", "Rejected"];
-    }else if(role === "Cashier"){
+    } else if (role === "Cashier") {
       where.payment_status = "Approved";
     }
 
@@ -196,9 +241,7 @@ export const getAllAssets = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching assets:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -225,9 +268,7 @@ export const getAssetById = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching asset by ID:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -321,9 +362,9 @@ export const deleteAsset = async (req, res) => {
     });
   } catch (error) {
     console.error("Error deleting asset:", error);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      message: "Internal server error",
+      message: error.message,
     });
   }
 };
@@ -331,122 +372,122 @@ export const deleteAsset = async (req, res) => {
 /**
  * * Update asset payment status
  */
-export const updateAssetPaymentStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { payment_status } = req.body;
-    const role = req.user.role;
+// export const updateAssetPaymentStatus = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const { payment_status } = req.body;
+//     const role = req.user.role;
 
-    const asset = await Asset.findOne({
-      where: { asset_id: id, is_deleted: false },
-    });
-    if (!asset) {
-      return res.status(404).json({
-        success: false,
-        message: "Asset not found",
-      });
-    }
+//     const asset = await Asset.findOne({
+//       where: { asset_id: id, is_deleted: false },
+//     });
+//     if (!asset) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Asset not found",
+//       });
+//     }
 
-    const from_acc = await BankAccount.findOne({
-      where: { account_name: "Peal", is_deleted: false },
-    });
-    if (!from_acc) {
-      return res.status(400).json({
-        success: false,
-        message: "Source bank account not found",
-        data: null,
-      });
-    }
+//     const from_acc = await BankAccount.findOne({
+//       where: { account_name: "Peal", is_deleted: false },
+//     });
+//     if (!from_acc) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Source bank account not found",
+//         data: null,
+//       });
+//     }
 
-    if (role === "Accountant") {
-      const allowedStatuses = ["Approved", "Rejected"];
-      if (!allowedStatuses.includes(payment_status)) {
-        return res.status(400).json({
-          success: false,
-          message: `Invalid payment status for accountant. Allowed: ${allowedStatuses.join(
-            ", "
-          )}`,
-          data: null,
-        });
-      }
-    } else if (role === "Cashier") {
-      const allowedStatuses = ["Paid"];
-      if (!allowedStatuses.includes(payment_status)) {
-        return res.status(400).json({
-          success: false,
-          message: `Invalid payment status for cashier. Allowed: ${allowedStatuses.join(
-            ", "
-          )}`,
-          data: null,
-        });
-      }
-    } else {
-      return res.status(403).json({
-        success: false,
-        message: "Unauthorized role to update payment status",
-        data: null,
-      });
-    }
+//     if (role === "Accountant") {
+//       const allowedStatuses = ["Approved", "Rejected"];
+//       if (!allowedStatuses.includes(payment_status)) {
+//         return res.status(400).json({
+//           success: false,
+//           message: `Invalid payment status for accountant. Allowed: ${allowedStatuses.join(
+//             ", "
+//           )}`,
+//           data: null,
+//         });
+//       }
+//     } else if (role === "Cashier") {
+//       const allowedStatuses = ["Paid"];
+//       if (!allowedStatuses.includes(payment_status)) {
+//         return res.status(400).json({
+//           success: false,
+//           message: `Invalid payment status for cashier. Allowed: ${allowedStatuses.join(
+//             ", "
+//           )}`,
+//           data: null,
+//         });
+//       }
+//     } else {
+//       return res.status(403).json({
+//         success: false,
+//         message: "Unauthorized role to update payment status",
+//         data: null,
+//       });
+//     }
 
-    if (from_acc.balance < Number(asset.price * asset.quantity)) {
-      return res.status(400).json({
-        success: false,
-        message: "Insufficient funds in source bank account",
-        data: null,
-      });
-    }
+//     if (from_acc.balance < Number(asset.price * asset.quantity)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Insufficient funds in source bank account",
+//         data: null,
+//       });
+//     }
 
-    let receipt = null;
-    if (payment_status === "Paid") {
-      if (req.file) {
-        receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
-          /\\/g,
-          "/"
-        )}`;
-      } else {
-        return res.status(400).json({
-          success: false,
-          message: "Receipt is required when marking payment as Paid",
-          data: null,
-        });
-      }
-    }
+//     let receipt = null;
+//     if (payment_status === "Paid") {
+//       if (req.file) {
+//         receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
+//           /\\/g,
+//           "/"
+//         )}`;
+//       } else {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Receipt is required when marking payment as Paid",
+//           data: null,
+//         });
+//       }
+//     }
 
-    await asset.update({
-      payment_status,
-    });
+//     await asset.update({
+//       payment_status,
+//     });
 
-    if (payment_status === "Paid") {
-      await Expense.create({
-        expense_reason: "Expense for asset purchase",
-        specific_reason: `Purchased asset: ${asset.name}`,
-        description: `Purchase ${asset.quantity} unit(s) of ${asset.name}`,
-        amount: Number(asset.price) * asset.quantity,
-        expensed_date: new Date(),
-        from_account: from_acc.account_id,
-        asset_id: asset.asset_id,
-        status: payment_status,
-        receipt,
-      });
-      from_acc.balance =
-        Number(from_acc.balance) -
-        Number(
-          asset.price * asset.quantity + asset.price * asset.quantity * 0.02
-        ); // Including 5% transaction fee
-      await from_acc.save();
-    }
+//     if (payment_status === "Paid") {
+//       await Expense.create({
+//         expense_reason: "Expense for asset purchase",
+//         specific_reason: `Purchased asset: ${asset.name}`,
+//         description: `Purchase ${asset.quantity} unit(s) of ${asset.name}`,
+//         amount: Number(asset.price) * asset.quantity,
+//         expensed_date: new Date(),
+//         from_account: from_acc.account_id,
+//         asset_id: asset.asset_id,
+//         status: payment_status,
+//         receipt,
+//       });
+//       from_acc.balance =
+//         Number(from_acc.balance) -
+//         Number(
+//           asset.price * asset.quantity + asset.price * asset.quantity * 0.02
+//         ); // Including 5% transaction fee
+//       await from_acc.save();
+//     }
 
-    res.status(200).json({
-      success: true,
-      message:
-        "Asset payment status updated successfully with appropriate financial records",
-      data: asset,
-    });
-  } catch (error) {
-    console.error("Error updating asset payment status:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
-};
+//     res.status(200).json({
+//       success: true,
+//       message:
+//         "Asset payment status updated successfully with appropriate financial records",
+//       data: asset,
+//     });
+//   } catch (error) {
+//     console.error("Error updating asset payment status:", error);
+//     res.status(400).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };

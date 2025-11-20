@@ -97,8 +97,8 @@ export const createExpense = async (req, res) => {
   } catch (error) {
     console.error("Error creating expense:", error);
     res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -186,8 +186,8 @@ export const getAllExpenses = async (req, res) => {
   } catch (error) {
     console.error("Error fetching expenses:", error);
     res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -234,8 +234,8 @@ export const getExpenseById = async (req, res) => {
   } catch (error) {
     console.error("Error fetching expense:", error);
     res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -305,8 +305,8 @@ export const updateExpense = async (req, res) => {
   } catch (error) {
     console.error("Error updating expense:", error);
     res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -341,8 +341,8 @@ export const deleteExpense = async (req, res) => {
   } catch (error) {
     console.error("Error deleting expense:", error);
     res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -406,7 +406,10 @@ export const updateExpenseStatus = async (req, res) => {
     }
 
     // Only check available balance when trying to mark the expense as Paid
-    if (status === "Paid" && Number(from_acc.balance) < Number(expense.amount)) {
+    if (
+      status === "Paid" &&
+      Number(from_acc.balance) < Number(expense.amount)
+    ) {
       return res.status(400).json({
         success: false,
         message: "Insufficient balance in the bank account to pay the expense",
@@ -438,7 +441,6 @@ export const updateExpenseStatus = async (req, res) => {
       }
     }
 
-    
     let from_account = null;
     if (status === "Paid") {
       from_account = from_acc.account_id;
@@ -471,7 +473,7 @@ export const updateExpenseStatus = async (req, res) => {
   } catch (error) {
     console.error("Error approving expense:", error);
     res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };

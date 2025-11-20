@@ -47,10 +47,9 @@ export const login = async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: err.message,
     });
   }
 };
@@ -136,10 +135,9 @@ export const verifyLoginOtp = async (req, res) => {
     });
   } catch (err) {
     console.error("Error verifying login OTP:", err);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: err.message,
     });
   }
 };

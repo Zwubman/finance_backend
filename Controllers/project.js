@@ -77,10 +77,9 @@ export const createProject = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in createProject:", error);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      message: "Server Error",
-      error: error.message,
+      message: error.message,
     });
   }
 };
@@ -108,6 +107,8 @@ export const getAllProjects = async (req, res) => {
       offset: parseInt(offset),
     });
 
+    const total_project = await Project.count({ where: { is_deleted: false } });
+
     // Transform data: add total_income + all income details
     const projectsWithIncomeDetails = projects.map((project) => {
       const incomes = project.from_project || [];
@@ -118,7 +119,6 @@ export const getAllProjects = async (req, res) => {
 
       return {
         ...project.toJSON(),
-        income_details: incomes, 
         total_income: totalIncome,
       };
     });
@@ -128,7 +128,7 @@ export const getAllProjects = async (req, res) => {
       message: "Projects retrieved successfully",
       data: projectsWithIncomeDetails,
       pagination: {
-        total: count,
+        total: total_project,
         page: parseInt(page),
         limit: parseInt(limit),
         totalPages: Math.ceil(count / limit),
@@ -137,8 +137,8 @@ export const getAllProjects = async (req, res) => {
   } catch (error) {
     console.error("Error in getAllProjects:", error);
     res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -188,8 +188,8 @@ export const getProjectById = async (req, res) => {
   } catch (error) {
     console.error("Error in getProjectById:", error);
     res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -238,8 +238,8 @@ export const updateProject = async (req, res) => {
   } catch (error) {
     console.error("Error updating project:", error);
     res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -271,8 +271,8 @@ export const deleteProject = async (req, res) => {
   } catch (error) {
     console.error("Error deleting project:", error);
     res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -366,10 +366,9 @@ export const addProjectCostEntry = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in addProjectCostEntry:", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Server error while adding cost entry",
-      error: error.message,
+      message: error.message,
     });
   }
 };
@@ -410,10 +409,9 @@ export const addEmployeeToProject = async (req, res) => {
     });
   } catch (error) {
     console.error("Error adding employee:", error);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      message: "Server Error",
-      error: error.message,
+      message: error.message,
     });
   }
 };
@@ -445,10 +443,9 @@ export const removeEmployeeFromProject = async (req, res) => {
     });
   } catch (error) {
     console.error("Error removing employee:", error);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      message: "Server Error",
-      error: error.message,
+      message: error.message,
     });
   }
 };

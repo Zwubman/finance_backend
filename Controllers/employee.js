@@ -116,8 +116,8 @@ export const registerEmployee = async (req, res) => {
   } catch (error) {
     console.error("Error in register employee:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Server Error", Error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -144,8 +144,8 @@ export const getEmployeeById = async (req, res) => {
   } catch (error) {
     console.error("Error in get employee by id:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Server Error", Error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -182,8 +182,8 @@ export const getAllEmployees = async (req, res) => {
   } catch (error) {
     console.error("Error in get all employees:", error);
     return res
-      .status(500)
-      .json({ success: false, message: "Server Error", Error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };
 
@@ -278,10 +278,9 @@ export const updateEmployee = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -314,10 +313,9 @@ export const deleteEmployee = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };

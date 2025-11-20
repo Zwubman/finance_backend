@@ -5,7 +5,6 @@ import AccountTransfer from "../Models/account_transfer.js";
 import Asset from "../Models/asset.js";
 import Loan from "../Models/loan.js";
 import Project from "../Models/project.js";
-import ExpenseRequest from "../Models/expense_request.js";
 import BankAccount from "../Models/bank_account.js";
 
 /**
@@ -40,31 +39,31 @@ export const getReport = async (req, res) => {
     });
 
     const total_software_sales_income = software_sales_income.reduce(
-      (total, income) => total + income.amount,
+      (total, income) => Number(total) + Number(income.amount),
       0
     );
     const total_subscription_income = subscription_income.reduce(
-      (total, income) => total + income.amount,
+      (total, income) => Number(total) + Number(income.amount),
       0
     );
     const total_maintenance = maintenance_income.reduce(
-      (total, income) => total + income.amount,
+      (total, income) => Number(total) + Number(income.amount),
       0
     );
     const total_training_workshops_income = training_workshops_income.reduce(
-      (total, income) => total + income.amount,
+      (total, income) => Number(total) + Number(income.amount),
       0
     );
     const total_project_income = project_income.reduce(
-      (total, income) => total + income.amount,
+      (total, income) => Number(total) + Number(income.amount),
       0
     );
     const total_api_usage_income = api_usage_income.reduce(
-      (total, income) => total + income.amount,
+      (total, income) => Number(total) + Number(income.amount),
       0
     );
     const total_asset_sales_income = asset_sales_income.reduce(
-      (total, income) => total + income.amount,
+      (total, income) => Number(total) + Number(income.amount),
       0
     );
 
@@ -133,35 +132,35 @@ export const getReport = async (req, res) => {
 
     const total_office_administration_expense =
       office_administration_expense.reduce(
-        (total, expense) => total + expense.amount,
+        (total, expense) => Number(total) + Number(expense.amount),
         0
       );
     const total_infrastructure_expense = infrastructure_expense.reduce(
-      (total, expense) => total + expense.amount,
+      (total, expense) => Number(total) + Number(expense.amount),
       0
     );
     const total_marketing_expense = marketing_expense.reduce(
-      (total, expense) => total + expense.amount,
+      (total, expense) => Number(total) + Number(expense.amount),
       0
     );
     const total_finance_expense = finance_expense.reduce(
-      (total, expense) => total + expense.amount,
+      (total, expense) => Number(total) + Number(expense.amount),
       0
     );
     const total_travel_expense = travel_expense.reduce(
-      (total, expense) => total + expense.amount,
+      (total, expense) => Number(total) + Number(expense.amount),
       0
     );
     const total_project_expense = project_expense.reduce(
-      (total, expense) => total + expense.amount,
+      (total, expense) => Number(total) + Number(expense.amount),
       0
     );
     const total_asset_purchase_expense = asset_purchase_expense.reduce(
-      (total, expense) => total + expense.amount,
+      (total, expense) => Number(total) + Number(expense.amount),
       0
     );
     const total_other_expense = other_expense.reduce(
-      (total, expense) => total + expense.amount,
+      (total, expense) => Number(total) + Number(expense.amount),
       0
     );
 
@@ -235,19 +234,19 @@ export const getReport = async (req, res) => {
     })
 
     const total_loan_to_employee = loan_to_employee.reduce(
-      (total, loan) => total + loan.amount + loan.amount * 0.02,
+      (total, loan) => Number(total) + Number(loan.amount) + Number(loan.amount) * 0.02,
       0
     );
     const total_loan_from_external = loan_form_external.reduce(
-      (total, loan) => total + loan.amount,
+      (total, loan) => Number(total) + Number(loan.amount),
       0
     );
     const total_returned_loan = returned_loan.reduce(
-      (total, loan) => total + loan.amount + loan.penalty + (loan.amount * interest_rate)/100,
+      (total, loan) => Number(total) + Number(loan.amount) + Number(loan.penalty) + Number((loan.amount * interest_rate)/100),
       0
     );
     const total_repaid_loan = repaid_loan.reduce(
-      (total, loan) => total + loan.amount + loan.penalty + (loan.amount * interest_rate)/100,
+      (total, loan) => Number(total) + Number(loan.amount) + Number(loan.penalty) + Number((loan.amount * interest_rate)/100),
       0
     )
 
@@ -348,7 +347,7 @@ export const getReport = async (req, res) => {
   } catch (error) {
     console.error("Error in getReport:", error);
     res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+      .status(400)
+      .json({ success: false, message: error.message });
   }
 };

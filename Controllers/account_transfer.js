@@ -121,10 +121,9 @@ export const createAccountTransfer = async (req, res) => {
   } catch (error) {
     await t.rollback();
     console.error("Error creating account transfer:", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -159,10 +158,9 @@ export const getAllAccountTransfers = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in get all account transfers:", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -194,10 +192,9 @@ export const getAccountTransferById = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in get account transfer by ID:", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -301,10 +298,9 @@ export const updateAccountTransfer = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in update account transfer:", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -339,10 +335,9 @@ export const deleteAccountTransfer = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in delete account transfer:", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Server error",
-      data: null,
+      message: error.message,
     });
   }
 };

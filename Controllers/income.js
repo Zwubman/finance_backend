@@ -121,10 +121,9 @@ export const createIncome = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating income record:", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -186,10 +185,9 @@ export const getAllIncomes = async (req, res) => {
     });
   } catch (error) {
     console.error("Error retrieving incomes:", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -233,10 +231,9 @@ export const getIncomeById = async (req, res) => {
     });
   } catch (error) {
     console.error("Error retrieving income record:", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+        message: error.message,
     });
   }
 };
@@ -364,10 +361,9 @@ export const updateIncome = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating income record:", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };
@@ -403,16 +399,15 @@ export const deleteIncome = async (req, res) => {
     });
   } catch (error) {
     console.error("Error deleting income record:", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };
 
 /**
- * Get both toal income and total expenses
+ * Get both total income and total expenses
  */
 export const getIncomeExpenseSummary = async (req, res) => {
   try {
@@ -454,10 +449,9 @@ export const getIncomeExpenseSummary = async (req, res) => {
     });
   } catch (error) {
     console.error("Error retrieving income and expense summary:", error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
-      data: null,
+      message: error.message,
     });
   }
 };
