@@ -1,5 +1,5 @@
 import express from "express";
-import {createAsset, getAssetById, getAllAssets, updateAsset, deleteAsset, updateAssetPaymentStatus} from "../Controllers/asset.js";
+import {createAsset, getAssetById, getAllAssets, updateAsset, deleteAsset,} from "../Controllers/asset.js";
 
 const router = express.Router();
 
@@ -9,6 +9,6 @@ router.get("/:id", getAssetById);
 router.put("/:id", updateAsset);
 router.delete("/:id", deleteAsset);
 // Endpoint to update payment status (e.g., Approved, Rejected, Paid).
-router.patch("/:id/payment-status", updateAssetPaymentStatus);
+// router.patch("/:id/payment-status", updateAssetPaymentStatus);
 
 export default router;

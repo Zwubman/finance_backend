@@ -91,6 +91,8 @@ export const getAllProjects = async (req, res) => {
       offset: parseInt(offset),
     });
 
+    const total_project = await Project.count({ where: { is_deleted: false } });
+
     // Transform data: add total_income + all income details
     const projectsWithIncomeDetails = projects.map((project) => {
       const incomes = project.from_project || [];
@@ -101,7 +103,6 @@ export const getAllProjects = async (req, res) => {
 
       return {
         ...project.toJSON(),
-        income_details: incomes, 
         total_income: totalIncome,
       };
     });
@@ -111,7 +112,7 @@ export const getAllProjects = async (req, res) => {
       message: "Projects retrieved successfully",
       data: projectsWithIncomeDetails,
       pagination: {
-        total: count,
+        total: total_project,
         page: parseInt(page),
         limit: parseInt(limit),
         totalPages: Math.ceil(count / limit),
