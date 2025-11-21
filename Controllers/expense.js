@@ -23,7 +23,7 @@ export const createExpense = async (req, res) => {
       });
     }
 
-    const { expense_reason, specific_reason, amount, description, project_id } =
+    const { expense_reason, specific_reason, amount, description, project_id, from_account } =
       req.body;
 
     // Validate required fields
@@ -36,7 +36,7 @@ export const createExpense = async (req, res) => {
     }
 
     const from_acc = await BankAccount.findOne({
-      where: { account_name: "Vault", is_deleted: false },
+      where: { account_id: from_account, is_deleted: false },
     });
     if (!from_acc) {
       return res.status(400).json({
