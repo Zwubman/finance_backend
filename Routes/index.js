@@ -11,6 +11,7 @@ import payrollRoutes from "./payroll.js";
 import assetRoutes from "./asset.js";
 import budgetPlanRoutes from "./budget_plan.js";
 import reportRoutes from "./report.js";
+import analyticsRoutes from "./analytics.js";
 import expenseRequestRoutes from "./expense_request.js";
 import receivableRoutes from "./receivable.js";
 import payableRoutes from "./payable.js";
@@ -30,7 +31,8 @@ router.use("/expenses", expenseRoutes);
 router.use("/payrolls", payrollRoutes);
 router.use("/assets", assetRoutes);
 router.use("/reports", reportRoutes);
-// router.use("/payrolls", payrollRoutes);
+router.use("/analytics", analyticsRoutes);
+// router.use("/payrolls", payrollRoutes)
 router.use("/receivables", receivableRoutes);
 router.use("/payables", payableRoutes);
 
