@@ -56,7 +56,7 @@ export const getSystemAnalytics = async (req, res) => {
     // Bank account balances
     const bankAccounts = await BankAccount.findAll({
       where: { is_deleted: false },
-      attributes: ["account_id", "account_name", "balance"],
+      attributes: ["account_id", "account_name", "balance","bank_name"],
     }).catch(() => []);
 
     // Process and OS metrics
@@ -115,7 +115,7 @@ export const getSystemAnalytics = async (req, res) => {
           net: Number((totalIncome || 0) - (totalExpense || 0)),
           bank_accounts: bankAccounts.map((b) => ({
             account_id: b.account_id,
-            account_name: b.account_name,
+            account_name: b.bank_name,
             balance: Number(b.balance || 0),
           })),
         },
