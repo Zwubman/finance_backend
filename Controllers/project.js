@@ -398,14 +398,90 @@ export const addEmployeeToProject = async (req, res) => {
         .json({ success: false, message: "Employee not found" });
 
     const assigned = new Set(project.assigned_to || []);
+    const alreadyAssigned = (project.assigned_to || []).includes(Number(employee_id));
+    if (alreadyAssigned) {
+      return res.status(200).json({
+        success: true,
+        message: "Employee already assigned to project",
+        data: project.assigned_to,
+      });
+    }
+
     assigned.add(Number(employee_id));
 
+    // Update assigned employees list
     await project.update({ assigned_to: [...assigned] });
+
+    // Calculate project duration in months (inclusive). If project has
+    // a start and expected_end date, compute months between them. Any
+    // positive duration counts as at least 1 month.
+    let months = 0;
+    try {
+      const start = new Date(project.start_date);
+      const end = new Date(project.expected_end_date);
+      if (end > start) {
+        const yearDiff = end.getFullYear() - start.getFullYear();
+        const monthDiff = end.getMonth() - start.getMonth();
+        months = yearDiff * 12 + monthDiff;
+        // If the end day is on/after the start day, count the current month
+        if (end.getDate() >= start.getDate()) months += 1;
+        // Ensure at least 1 month for any positive duration
+        months = Math.max(1, months);
+      }
+    } catch (e) {
+      months = 0;
+    }
+
+    // Compute employee cost = monthly salary * months
+    const monthlySalary = Number(employee.salary || 0);
+    const employeeCost = Number((monthlySalary * months) || 0);
+
+    // Add the cost entry to project's actual_cost
+    const current = project.actual_cost || {
+      total_actual_cost: 0,
+      cost_details: [],
+    };
+    const details = Array.isArray(current.cost_details)
+      ? [...current.cost_details]
+      : [];
+
+    const entry = {
+      reason: `Employee cost - ${employee.first_name} ${employee.last_name}`,
+      amount: employeeCost,
+      months: months,
+      employee_id: employee.employee_id,
+      date: new Date(),
+    };
+
+    details.push(entry);
+    const updatedActualCost = {
+      total_actual_cost: Number(current.total_actual_cost || 0) + Number(employeeCost),
+      cost_details: details,
+    };
+
+    project.set("actual_cost", updatedActualCost);
+    await project.save();
+
+    // Create a corresponding Expense record so the project cost is tracked
+    // in the expenses table (status: Requested)
+    await Expense.create({
+      expense_reason: "Employee salary costs",
+      specific_reason: `Employee ${employee.employee_id} cost for project ${project.project_id}`,
+      description: `Employee ${employee.first_name} ${employee.last_name} — ${months} month(s) @ ${monthlySalary}`,
+      amount: Number(employeeCost),
+      expensed_date: new Date(),
+      project_id: project.project_id,
+      status: "Requested",
+    });
 
     res.status(200).json({
       success: true,
-      message: "Employee added successfully",
-      data: project.assigned_to,
+      message: "Employee added successfully and cost recorded",
+      data: {
+        assigned_to: project.assigned_to,
+        added_cost_entry: entry,
+        actual_cost: updatedActualCost,
+      },
     });
   } catch (error) {
     console.error("Error adding employee:", error);

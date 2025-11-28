@@ -3,6 +3,7 @@ import BankAccount from "../Models/bank_account.js";
 import Project from "../Models/project.js";
 import Loan from "../Models/loan.js";
 import fs from "fs";
+import { notifyRoles } from "../Utils/notifications.js";
 
 /**
  * Create a new expense
@@ -87,6 +88,21 @@ export const createExpense = async (req, res) => {
       from_acc.balance =
         Number(from_acc.balance) - Number(numericAmount + numericAmount * 0.02);
       await from_acc.save();
+      try {
+        const actorName =
+          (req.user && (req.user.first_name || req.user.name))
+            ? `${req.user.first_name || req.user.name} ${req.user.last_name || ''}`.trim()
+            : req.user?.email || `user:${req.user?.id || req.user?.user_id || 'unknown'}`;
+        notifyRoles(["Accountant"], {
+          title: "New expense created",
+          message: `${actorName} created expense '${new_expense.description || new_expense.specific_reason}' (status: ${new_expense.status})`,
+          expense_id: new_expense.expense_id,
+          status: new_expense.status,
+          actor: { id: req.user?.id || req.user?.user_id || null, name: actorName },
+        });
+      } catch (e) {
+        console.error("Failed to send creation notification:", e);
+      }
     }
 
     res.status(201).json({
@@ -463,6 +479,42 @@ export const updateExpenseStatus = async (req, res) => {
 
       expense.expensed_date = new Date();
       await expense.save();
+    }
+
+    // send notifications based on new status
+    try {
+      const actorName =
+        (req.user && (req.user.first_name || req.user.name))
+          ? `${req.user.first_name || req.user.name} ${req.user.last_name || ''}`.trim()
+          : req.user?.email || `user:${req.user?.id || req.user?.user_id || 'unknown'}`;
+
+      if (status === "Rejected") {
+        notifyRoles(["Manager"], {
+          title: "Expense rejected",
+          message: `${actorName} rejected expense '${expense.description || expense.specific_reason}'`,
+          expense_id: expense.expense_id,
+          status,
+          actor: { id: req.user?.id || req.user?.user_id || null, name: actorName },
+        });
+      } else if (status === "Approved") {
+        notifyRoles(["Manager", "Cashier"], {
+          title: "Expense approved",
+          message: `${actorName} approved expense '${expense.description || expense.specific_reason}'`,
+          expense_id: expense.expense_id,
+          status,
+          actor: { id: req.user?.id || req.user?.user_id || null, name: actorName },
+        });
+      } else if (status === "Paid") {
+        notifyRoles(["Manager", "Accountant"], {
+          title: "Expense paid",
+          message: `${actorName} marked expense '${expense.description || expense.specific_reason}' as paid`,
+          expense_id: expense.expense_id,
+          status,
+          actor: { id: req.user?.id || req.user?.user_id || null, name: actorName },
+        });
+      }
+    } catch (e) {
+      console.error("Failed to send status notification:", e);
     }
 
     res.status(200).json({

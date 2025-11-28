@@ -15,6 +15,7 @@ import analyticsRoutes from "./analytics.js";
 import expenseRequestRoutes from "./expense_request.js";
 import receivableRoutes from "./receivable.js";
 import payableRoutes from "./payable.js";
+import notificationRoutes from "./notification.js";
 
 const router = express.Router();
 
@@ -35,5 +36,6 @@ router.use("/analytics", analyticsRoutes);
 // router.use("/payrolls", payrollRoutes)
 router.use("/receivables", receivableRoutes);
 router.use("/payables", payableRoutes);
+router.use("/notifications", notificationRoutes);
 
 export default router;

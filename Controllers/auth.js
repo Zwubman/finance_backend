@@ -112,8 +112,8 @@ export const verifyLoginOtp = async (req, res) => {
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: "Strict",
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "Strict" : "Lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -143,7 +143,7 @@ export const verifyLoginOtp = async (req, res) => {
 };
 
 export const refresh = (req, res) => {
-  const token = req.cookies.refreshToken;
+  const token = req.cookies?.refreshToken || req.body?.refreshToken;
   if (!token) {
     return res.status(401).json({
       success: false,

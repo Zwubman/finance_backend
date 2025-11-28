@@ -26,6 +26,17 @@ export const createBankAccount = async (req, res) => {
         data: null,
       });
     }
+    // Ensure account_number is unique
+    const existingAccount = await BankAccount.findOne({
+      where: { account_number: account_number, is_deleted: false },
+    });
+    if (existingAccount) {
+      return res.status(400).json({
+        success: false,
+        message: "bank account number already exists",
+        data: null,
+      });
+    }
     
       // Validate enum-like fields early to return 400 instead of DB errors
       const allowedAccountNames = ["Vault", "Peal"];
