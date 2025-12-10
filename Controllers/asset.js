@@ -391,6 +391,41 @@ export const deleteAsset = async (req, res) => {
 };
 
 /**
+ * Update asset status (Available, In-Use, Maintenance, Disposed)
+ */
+export const updateAssetStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const allowedStatuses = ["Available", "In-Use", "Maintenance", "Disposed"];
+    if (!status || !allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Allowed: ${allowedStatuses.join(", ")}`,
+      });
+    }
+
+    const asset = await Asset.findOne({ where: { asset_id: id, is_deleted: false } });
+    if (!asset) {
+      return res.status(404).json({ success: false, message: "Asset not found" });
+    }
+
+    // Update only the status field to avoid overwriting other data
+    await asset.update({ status });
+
+    res.status(200).json({
+      success: true,
+      message: `Asset status updated to ${status}`,
+      data: asset,
+    });
+  } catch (error) {
+    console.error("Error updating asset status:", error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+/**
  * * Update asset payment status
  */
 // export const updateAssetPaymentStatus = async (req, res) => {

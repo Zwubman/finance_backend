@@ -15,6 +15,7 @@ import "./Models/payroll.js";
 import "./Utils/scheduled_task.js";
 import routes from "./Routes/index.js";
 import { login, logout, refresh, verifyLoginOtp } from "./Controllers/auth.js";
+import cookieParser from "cookie-parser";
 import { authenticate } from "./Middlewares/auth.js";
 import { registerUser } from "./Controllers/user.js";
 import { registerEmployee } from "./Controllers/employee.js";
@@ -34,6 +35,7 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 app.post("/login", login);
@@ -49,13 +51,21 @@ app.post("/employee-register", registerEmployee);
 app.use("/api/v1", authenticate, routes);
 
 // Start the server and connect to the database
+import http from "http";
+import { initWebSocket } from "./Utils/notifications.js";
+
 const startServer = async () => {
   try {
     await sequelize.authenticate();
     console.log("Database connected...");
 
     const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
+    const server = http.createServer(app);
+
+    // initialize websocket server attached to the HTTP server
+    initWebSocket(server);
+
+    server.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });
 
