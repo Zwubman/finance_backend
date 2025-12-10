@@ -166,7 +166,7 @@ export const getAllUsers = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { first_name, middle_name, last_name, email, phone_number } =
+    const { first_name, middle_name, last_name, email, phone_number, role } =
       req.body;
 
     if (Object.keys(req.body).length === 0) {
@@ -219,6 +219,7 @@ export const updateUser = async (req, res) => {
     if (first_name) to_update.first_name = first_name;
     if (middle_name) to_update.middle_name = middle_name;
     if (last_name) to_update.last_name = last_name;
+    if(role) to_update.role = role
 
     await user.update(to_update);
 
