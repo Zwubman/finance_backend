@@ -184,6 +184,7 @@ export const getAllExpenses = async (req, res) => {
     const total_expense = await Expense.sum("amount", {
       where: {
         is_deleted: false,
+        status: "Paid",
       },
     });
 

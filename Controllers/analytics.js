@@ -50,7 +50,7 @@ export const getSystemAnalytics = async (req, res) => {
     // Financial aggregates
     const [totalIncome, totalExpense] = await Promise.all([
       Income.sum("amount", { where: { is_deleted: false } }).catch(() => 0),
-      Expense.sum("amount", { where: { is_deleted: false } }).catch(() => 0),
+      Expense.sum("amount", { where: { is_deleted: false, status: "Paid" } }).catch(() => 0),
     ]);
 
     // Bank account balances

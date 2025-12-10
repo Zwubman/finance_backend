@@ -21,6 +21,7 @@ export const createLoan = async (req, res) => {
       penalty,
       status,
       to_account,
+      from_account,
     } = req.body;
 
     // validation
@@ -91,9 +92,20 @@ export const createLoan = async (req, res) => {
       });
     }
 
+    const from_acc = await BankAccount.findOne({
+      where: { account_id: from_account, is_deleted: false },
+    });
+    if(!from_acc){
+      return res.status(404).json({
+        success: false,
+        message: "Bank account not found",
+        data: null,
+      });
+    }
+
     // Normalize and sanitize inputs to avoid sending empty strings to integer/decimal columns
     let receipt = null;
-    if (status === "Received" && to_who) {
+    if (status === "Received" && from_whom) {
       if (req.file) {
         receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
           /\\/g,
@@ -103,13 +115,16 @@ export const createLoan = async (req, res) => {
     }
 
     // Convert empty-string values to null and ensure numeric fields are numbers
-    const cleanedToWho = to_who === "" || to_who === undefined ? null : Number(to_who);
-    const cleanedAmount = amount === "" || amount === undefined ? null : Number(amount);
+    const cleanedToWho =
+      to_who === "" || to_who === undefined ? null : Number(to_who);
+    const cleanedAmount =
+      amount === "" || amount === undefined ? null : Number(amount);
     const cleanedInterest =
       interest_rate === "" || interest_rate === undefined
         ? null
         : Number(interest_rate);
-    const cleanedPenalty = penalty === "" || penalty === undefined ? null : Number(penalty);
+    const cleanedPenalty =
+      penalty === "" || penalty === undefined ? null : Number(penalty);
 
     const loan = await Loan.create({
       to_who: cleanedToWho,
@@ -124,7 +139,8 @@ export const createLoan = async (req, res) => {
       status,
     });
 
-    if (status === "Received") {
+    const validStatuses = ["Received", "Repaid"];
+    if (validStatuses.includes(status)) {
       const income = await Income.create({
         income_source: "Income from loans",
         specific_source: `Loan received from ${from_whom}`,
@@ -140,6 +156,24 @@ export const createLoan = async (req, res) => {
 
       to_acc.balance = Number(to_acc.balance) + Number(amount);
       await to_acc.save();
+    } else if (status === "Give_Request") {
+      await Expense.create({
+        expense_reason:
+          loan.to_who !== null
+            ? "Expense for employee loan"
+            : "Expense for returning external loan",
+        specific_reason:
+          loan.to_who !== null
+            ? `Loan given to employee ID: ${loan.to_who}`
+            : `Loan returned to ${loan.from_whom}`,
+        amount:
+          loan.amount +
+          loan.amount * 0.02 +
+          (loan.to_who === null ? (loan.interest_rate * loan.amount) / 100 : 0),
+        from_account: from_acc.account_id,
+        loan_id: loan.loan_id,
+        status: "Requested",
+      });
     }
     return res.status(201).json({
       success: true,
@@ -148,9 +182,7 @@ export const createLoan = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in create loan:", error);
-    return res
-      .status(400)
-      .json({ success: false, message: error.message });
+    return res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -192,9 +224,7 @@ export const getLoanById = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in get loan by id:", error);
-    return res
-      .status(400)
-      .json({ success: false, message: error.message });
+    return res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -257,9 +287,7 @@ export const getAllLoans = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in get all loans:", error);
-    return res
-      .status(400)
-      .json({ success: false, message: error.message });
+    return res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -397,7 +425,7 @@ export const deleteLoan = async (req, res) => {
  * Cashier can mark Given and Returned loans as Paid
  */
 export const updateLoanStatus = async (req, res) => {
-  console.log(req)
+  console.log(req);
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -419,7 +447,12 @@ export const updateLoanStatus = async (req, res) => {
     }
 
     if (role === "Accountant") {
-      const allowedStatus = ["Give_Rejected", "Return_Rejected", "Given", "Returned"];
+      const allowedStatus = [
+        "Give_Rejected",
+        "Return_Rejected",
+        "Given",
+        "Returned",
+      ];
       if (!allowedStatus.includes(status)) {
         return res.status(403).json({
           success: false,
@@ -493,17 +526,6 @@ export const updateLoanStatus = async (req, res) => {
       });
     }
 
-    const from_acc = await BankAccount.findOne({
-      where: { account_name: "Peal", is_deleted: false },
-    });
-    if (!from_acc) {
-      return res.status(404).json({
-        success: false,
-        message: "Bank account not found",
-        data: null,
-      });
-    }
-
     if (status === "Given" || status === "Returned") {
       if (from_acc.balance < loan.amount) {
         return res.status(400).json({
@@ -516,7 +538,6 @@ export const updateLoanStatus = async (req, res) => {
     }
 
     let receipt = null;
-    let from_account = null;
     if (status === "Paid") {
       if (req.file) {
         receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
@@ -530,45 +551,27 @@ export const updateLoanStatus = async (req, res) => {
           data: null,
         });
       }
-      from_account = from_acc.account_id;
     }
 
     await loan.update({
       status,
       receipt,
-      from_account,
+    });
+
+    const expense = await Expense.findOne({
+      where: { loan_id: loan.loan_id },
     });
 
     if (loan.status === "Paid") {
-      await Expense.create({
-        reason:
-          loan.to_who !== null
-            ? "Expense for employee loan"
-            : "Expense for returning external loan",
-        specific_reason:
-          loan.to_who !== null
-            ? `Loan given to employee ID: ${loan.to_who}`
-            : `Loan returned to ${loan.from_whom}`,
-        amount:
-          loan.amount +
-          loan.amount * 0.02 +
-          (loan.to_who === null ? (loan.interest_rate * loan.amount) / 100 : 0),
+      await expense.update({
         expensed_date: new Date(),
-        from_account: from_acc.account_id,
-        loan_id: loan.loan_id,
         status: "Paid",
         receipt: receipt,
       });
 
       from_acc.balance =
         Number(from_acc.balance) -
-        Number(
-          loan.amount +
-            loan.amount * 0.02 +
-            (loan.to_who === null
-              ? (loan.interest_rate * loan.amount) / 100
-              : 0)
-        );
+        Number( expense.amount);  
       await from_acc.save();
     }
 
