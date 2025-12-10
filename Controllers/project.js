@@ -279,12 +279,14 @@ export const deleteProject = async (req, res) => {
 export const addProjectCostEntry = async (req, res) => {
   try {
     const { id } = req.params;
-    const { reason, amount, date } = req.body;
+    const { reason, amount, date, from_account } = req.body;
 
-    if (!reason || isNaN(amount)) {
+    const parsedAmount = Number(amount);
+    const parsedFromAccount = Number(from_account);
+    if (!reason || Number.isNaN(parsedAmount) || Number.isNaN(parsedFromAccount)) {
       return res.status(400).json({
         success: false,
-        message: "Both 'reason' and numeric 'amount' are required.",
+        message: "'reason', numeric 'amount', and numeric 'from_account' are required.",
       });
     }
 
@@ -297,15 +299,15 @@ export const addProjectCostEntry = async (req, res) => {
         .json({ success: false, message: "Project not found" });
     }
 
-    // const from_acc = await BankAccount.findOne({
-    //   where: { account_id: from_account, is_deleted: false },
-    // });
-    // if (!from_acc) {
-    //   return res.status(404).json({
-    //     success: false,
-    //     message: "Bank account not found",
-    //   });
-    // }
+    const from_acc = await BankAccount.findOne({
+      where: { account_id: parsedFromAccount, is_deleted: false },
+    });
+    if (!from_acc) {
+      return res.status(404).json({
+        success: false,
+        message: "Bank account not found",
+      });
+    }
 
     // Correctly initialize structure
     const current = project.actual_cost || {
@@ -325,17 +327,24 @@ export const addProjectCostEntry = async (req, res) => {
     }
 
     // Create a cost entry
+    const expenseDate = date ? new Date(date) : new Date();
+    if (Number.isNaN(expenseDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid 'date' provided.",
+      });
+    }
     const entry = {
       reason,
-      amount: Number(amount),
-      date: date || new Date(),
+      amount: parsedAmount,
+      date: expenseDate,
       receipt,
     };
 
     details.push(entry);
     const updatedActualCost = {
       total_actual_cost:
-        Number(current.total_actual_cost || 0) + Number(amount),
+        Number(current.total_actual_cost || 0) + parsedAmount,
       cost_details: details,
     };
 
@@ -347,9 +356,10 @@ export const addProjectCostEntry = async (req, res) => {
     await Expense.create({
       expense_reason: "Project expenses",
       specific_reason: `Project cost entry for project ID ${id}`,
-      amount: Number(amount),
-      expensed_date: new Date(),
+      amount: parsedAmount,
+      expensed_date: expenseDate,
       project_id: project.project_id,
+      from_account: parsedFromAccount,
       description: `Project cost - ${reason}`,
       receipt,
       status: "Requested",
