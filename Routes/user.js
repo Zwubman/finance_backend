@@ -7,6 +7,9 @@ import {
   getProfile,
   updateProfile,
   changePassword,
+  forgotPassword,
+  verifyPasswordResetOtp,
+  resetPassword,
 } from "../Controllers/user.js";
 
 const router = express.Router();
@@ -18,6 +21,9 @@ router.get("/", getAllUsers);
 router.get("/profile", getProfile);
 router.put("/profile/password", changePassword);
 router.put("/profile", updateProfile);
+router.post("/forgot-password", forgotPassword);
+router.post("/verify-otp", verifyPasswordResetOtp);
+router.post("/reset-password", resetPassword);
 
 // parameterized routes after static routes
 router.get("/:id", getUserById);

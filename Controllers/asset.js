@@ -31,14 +31,9 @@ export const createAsset = async (req, res) => {
       });
     }
 
-    // Determine source account for Bought assets. If `from_account` was
-    // provided by the client we'll use it; otherwise default to the
-    // `Vault` account. The `expenses` table requires `from_account` non-null,
-    // so ensure we always resolve a valid account when recording the
-    // purchase expense.
+
     let from_acc = null;
     if (transaction_type === "Bought") {
-      if (from_account) {
         from_acc = await BankAccount.findOne({
           where: { account_id: from_account, is_deleted: false },
         });
@@ -49,20 +44,6 @@ export const createAsset = async (req, res) => {
             data: null,
           });
         }
-      } else {
-        // fall back to Vault account when no explicit from_account provided
-        from_acc = await BankAccount.findOne({
-          where: { account_name: "Vault", is_deleted: false },
-        });
-        if (!from_acc) {
-          return res.status(400).json({
-            success: false,
-            message:
-              "Source bank account not found (no from_account provided and Vault account missing)",
-            data: null,
-          });
-        }
-      }
     }
 
     // Only validate destination account for sold assets (destination account
@@ -107,10 +88,6 @@ export const createAsset = async (req, res) => {
       });
     }
 
-    // `status` refers to the asset lifecycle state (Available, In-Use, ...)
-    // Ensure it matches the enum defined in Models/asset.js. Previously this
-    // code validated against payment-like statuses which caused valid asset
-    // status values from the frontend (e.g. "Available") to be rejected.
     const allowedStatuses = ["Available", "In-Use", "Maintenance", "Disposed"];
     if (status && !allowedStatuses.includes(status)) {
       return res.status(400).json({
@@ -133,9 +110,7 @@ export const createAsset = async (req, res) => {
     }
 
     let receipt = null;
-    // If asset is sold, a receipt is expected. If not provided, we treat it
-    // as optional but log a warning. If you want to enforce receipt, keep the
-    // check below — currently we'll accept missing receipt.
+
     if (transaction_type === "Sold") {
       if (req.file) {
         receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
@@ -143,8 +118,6 @@ export const createAsset = async (req, res) => {
           "/"
         )}`;
       } else {
-        // Do not hard-fail here to avoid blocking reads; return a warning
-        // so frontend can surface it via toast if necessary.
         console.warn(
           "No receipt provided for sold asset. Proceeding without receipt."
         );
@@ -199,8 +172,8 @@ export const createAsset = async (req, res) => {
       from_acc.balance =
         Number(from_acc.balance) -
         Number(
-          asset.price * asset.quantity + asset.price * asset.quantity * 0.02
-        ); // Including 5% transaction fee
+          asset.price * asset.quantity
+        ); 
       await from_acc.save();
 
       // Expose the created expense so frontend can immediately show it

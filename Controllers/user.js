@@ -1,6 +1,9 @@
 import User from "../Models/user.js";
 import { Op } from "sequelize";
 import bcrypt from "bcryptjs";
+import { sendPasswordResetOtpEmail} from "../Utils/send_otp.js";
+import redisClient from "../Config/redis_config.js";
+
 
 export const registerUser = async (req, res) => {
   try {
@@ -91,9 +94,7 @@ export const registerUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in registerUser:", error);
-    return res
-      .status(400)
-      .json({ success: false, message: error.message });
+    return res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -119,18 +120,16 @@ export const getUserById = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in getUserById:", error);
-    return res
-      .status(400)
-      .json({ success: false, message: error.message });
+    return res.status(400).json({ success: false, message: error.message });
   }
 };
 
 export const getAllUsers = async (req, res) => {
   try {
-    const {page = 1, limit = 10} = req.query;
+    const { page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
 
-    const {count, rows: users} = await User.findAndCountAll({
+    const { count, rows: users } = await User.findAndCountAll({
       where: { is_deleted: false },
       limit: parseInt(limit),
       offset: parseInt(offset),
@@ -219,7 +218,7 @@ export const updateUser = async (req, res) => {
     if (first_name) to_update.first_name = first_name;
     if (middle_name) to_update.middle_name = middle_name;
     if (last_name) to_update.last_name = last_name;
-    if(role) to_update.role = role
+    if (role) to_update.role = role;
 
     await user.update(to_update);
 
@@ -280,22 +279,34 @@ export const getProfile = async (req, res) => {
     const userId = req.user?.user_id || req.user?.id;
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized", data: null });
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized", data: null });
     }
 
-    const user = await User.findOne({ where: { user_id: userId, is_deleted: false } });
+    const user = await User.findOne({
+      where: { user_id: userId, is_deleted: false },
+    });
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found", data: null });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found", data: null });
     }
 
     const userData = user.toJSON ? user.toJSON() : { ...user };
     delete userData.password;
 
-    return res.status(200).json({ success: true, message: "Profile retrieved successfully", data: userData });
+    return res.status(200).json({
+      success: true,
+      message: "Profile retrieved successfully",
+      data: userData,
+    });
   } catch (error) {
     console.error("Error in getProfile:", error);
-    return res.status(500).json({ success: false, message: "Server Error", Error: error.message });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server Error", Error: error.message });
   }
 };
 
@@ -303,31 +314,52 @@ export const updateProfile = async (req, res) => {
   try {
     const userId = req.user?.user_id || req.user?.id;
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized", data: null });
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized", data: null });
     }
 
-    const { first_name, middle_name, last_name, email, phone_number } = req.body;
+    const { first_name, middle_name, last_name, email, phone_number } =
+      req.body;
 
     if (Object.keys(req.body).length === 0) {
-      return res.status(400).json({ success: false, message: "No fields provided for update", data: null });
+      return res.status(400).json({
+        success: false,
+        message: "No fields provided for update",
+        data: null,
+      });
     }
 
-    const user = await User.findOne({ where: { user_id: userId, is_deleted: false } });
+    const user = await User.findOne({
+      where: { user_id: userId, is_deleted: false },
+    });
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found", data: null });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found", data: null });
     }
 
     const to_update = {};
 
     if (email) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        return res.status(400).json({ success: false, message: "Invalid email format", data: null });
+        return res.status(400).json({
+          success: false,
+          message: "Invalid email format",
+          data: null,
+        });
       }
 
       // check uniqueness excluding current user
-      const existing = await User.findOne({ where: { email, is_deleted: false, user_id: { [Op.ne]: userId } } });
+      const existing = await User.findOne({
+        where: { email, is_deleted: false, user_id: { [Op.ne]: userId } },
+      });
       if (existing) {
-        return res.status(400).json({ success: false, message: "Email already in use", data: null });
+        return res.status(400).json({
+          success: false,
+          message: "Email already in use",
+          data: null,
+        });
       }
 
       to_update.email = email;
@@ -335,12 +367,26 @@ export const updateProfile = async (req, res) => {
 
     if (phone_number) {
       if (!/^\+?[1-9]\d{1,14}$/.test(phone_number)) {
-        return res.status(400).json({ success: false, message: "Invalid phone number format", data: null });
+        return res.status(400).json({
+          success: false,
+          message: "Invalid phone number format",
+          data: null,
+        });
       }
 
-      const existingPhone = await User.findOne({ where: { phone_number, is_deleted: false, user_id: { [Op.ne]: userId } } });
+      const existingPhone = await User.findOne({
+        where: {
+          phone_number,
+          is_deleted: false,
+          user_id: { [Op.ne]: userId },
+        },
+      });
       if (existingPhone) {
-        return res.status(400).json({ success: false, message: "Phone number already in use", data: null });
+        return res.status(400).json({
+          success: false,
+          message: "Phone number already in use",
+          data: null,
+        });
       }
 
       to_update.phone_number = phone_number;
@@ -355,10 +401,129 @@ export const updateProfile = async (req, res) => {
     const updated = user.toJSON ? user.toJSON() : { ...user };
     delete updated.password;
 
-    return res.status(200).json({ success: true, message: "Profile updated successfully", data: updated });
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: updated,
+    });
   } catch (error) {
     console.error("Error in updateProfile:", error);
-    return res.status(500).json({ success: false, message: "Server Error", Error: error.message });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server Error", Error: error.message });
+  }
+};
+
+// Controller: Send OTP for password reset
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User with this email does not exist",
+      });
+    }
+
+    const OTP = Math.floor(100000 + Math.random() * 900000).toString();
+    await redisClient.set(`resetOtp:${email}`, OTP, "EX", 300);
+    await sendPasswordResetOtpEmail(OTP, email);
+    console.log(`Password reset OTP for ${email}: ${OTP}`);
+
+    res.status(200).json({
+      success: true,
+      message: "OTP sent to your email for password reset",
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Controller: Verify password reset OTP
+export const verifyPasswordResetOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    const storedOtp = await redisClient.get(`resetOtp:${email}`);
+
+    if (!storedOtp) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired or not found",
+      });
+    }
+
+    if (storedOtp !== otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    await redisClient.del(`resetOtp:${email}`);
+    await redisClient.set(`otpVerified:${email}`, "true", "EX", 600);
+
+    res.status(200).json({
+      success: true,
+      message: "OTP verified successfully. You can now reset your password.",
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Controller: Reset password
+export const resetPassword = async (req, res) => {
+  try {
+    const { email, newPassword, confirmNewPassword } = req.body;
+
+    const otpVerified = await redisClient.get(`otpVerified:${email}`);
+    if (!otpVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP verification required before resetting password",
+      });
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match",
+      });
+    }
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    user.password = hashedPassword; // assume hashing is handled by model hook
+    await user.save();
+
+    await redisClient.del(`otpVerified:${email}`);
+
+    res.status(200).json({
+      success: true,
+      message: "Password has been reset successfully",
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -366,35 +531,60 @@ export const changePassword = async (req, res) => {
   try {
     const userId = req.user?.user_id || req.user?.id;
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized", data: null });
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized", data: null });
     }
 
-    const { current_password, new_password, new_password_confirmation } = req.body;
+    const { current_password, new_password, new_password_confirmation } =
+      req.body;
 
     if (!current_password || !new_password || !new_password_confirmation) {
-      return res.status(400).json({ success: false, message: "All password fields are required", data: null });
+      return res.status(400).json({
+        success: false,
+        message: "All password fields are required",
+        data: null,
+      });
     }
 
     if (new_password !== new_password_confirmation) {
-      return res.status(400).json({ success: false, message: "New passwords do not match", data: null });
+      return res.status(400).json({
+        success: false,
+        message: "New passwords do not match",
+        data: null,
+      });
     }
 
-    const user = await User.findOne({ where: { user_id: userId, is_deleted: false } });
+    const user = await User.findOne({
+      where: { user_id: userId, is_deleted: false },
+    });
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found", data: null });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found", data: null });
     }
 
     const isMatch = await bcrypt.compare(current_password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ success: false, message: "Current password is incorrect", data: null });
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect",
+        data: null,
+      });
     }
 
     const hashed = await bcrypt.hash(new_password, 10);
     await user.update({ password: hashed });
 
-    return res.status(200).json({ success: true, message: "Password changed successfully", data: null });
+    return res.status(200).json({
+      success: true,
+      message: "Password changed successfully",
+      data: null,
+    });
   } catch (error) {
     console.error("Error in changePassword:", error);
-    return res.status(500).json({ success: false, message: "Server Error", Error: error.message });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server Error", Error: error.message });
   }
 };

@@ -304,7 +304,7 @@ export const updatePayableStatus = async (req, res) => {
       });
     }
 
-    if (from_acc.balance < Number(payable.amount + payable.amount * 0.02)) {
+    if (from_acc.balance < Number(payable.amount)) {
       return res.status(400).json({
         success: false,
         message: "Insufficient balance",
@@ -361,11 +361,10 @@ export const updatePayableStatus = async (req, res) => {
       if (expense_reason === "Expense for returning external loan") {
         amount = Number(
           payable.amount +
-            payable.amount * 0.02 +
             (payable.amount * loan.interest_rate) / 100
         );
       } else {
-        amount = Number(payable.amount + payable.amount * 0.02);
+        amount = Number(payable.amount);
       }
 
       await Expense.create({

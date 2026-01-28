@@ -168,7 +168,6 @@ export const createLoan = async (req, res) => {
             : `Loan returned to ${loan.from_whom}`,
         amount:
           loan.amount +
-          loan.amount * 0.02 +
           (loan.to_who === null ? (loan.interest_rate * loan.amount) / 100 : 0),
         from_account: from_acc.account_id,
         loan_id: loan.loan_id,

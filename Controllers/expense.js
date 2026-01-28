@@ -83,10 +83,10 @@ export const createExpense = async (req, res) => {
       from_account: from_acc.account_id,
     });
 
-    // If created, deduct amount from the source bank account (including 2% fee)
+    // If created, deduct amount from the source bank account
     if (new_expense) {
       from_acc.balance =
-        Number(from_acc.balance) - Number(numericAmount + numericAmount * 0.02);
+        Number(from_acc.balance) - Number(numericAmount);
       await from_acc.save();
       try {
         const actorName =
