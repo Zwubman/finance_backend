@@ -21,9 +21,7 @@ router.get("/", getAllUsers);
 router.get("/profile", getProfile);
 router.put("/profile/password", changePassword);
 router.put("/profile", updateProfile);
-router.post("/forgot-password", forgotPassword);
-router.post("/verify-otp", verifyPasswordResetOtp);
-router.post("/reset-password", resetPassword);
+
 
 // parameterized routes after static routes
 router.get("/:id", getUserById);

@@ -19,6 +19,7 @@ import cookieParser from "cookie-parser";
 import { authenticate } from "./Middlewares/auth.js";
 import { registerUser } from "./Controllers/user.js";
 import { registerEmployee } from "./Controllers/employee.js";
+import { forgotPassword, verifyPasswordResetOtp, resetPassword } from "./Controllers/user.js";
 import path from "path";
 
 dotenv.config();
@@ -42,6 +43,11 @@ app.post("/login", login);
 app.post("/verify-otp", verifyLoginOtp);
 app.post("/logout", logout);
 app.post("/refresh", refresh);
+
+// Password reset routes
+app.post("/forgot-password", forgotPassword);
+app.post("/verify-password-otp", verifyPasswordResetOtp);
+app.post("/reset-password", resetPassword);
 
 //public api
 app.post("/user-register", registerUser);

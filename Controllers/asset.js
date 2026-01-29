@@ -144,7 +144,7 @@ export const createAsset = async (req, res) => {
     if (transaction_type === "Sold") {
       // Record income from asset sale
       await Income.create({
-        source: "Income from asset sales",
+        income_source: "Income from asset sales",
         specific_source: `Sold asset: ${name}`,
         description: `Sale of ${quantity} unit(s) of ${asset.name}`,
         amount: amount,
