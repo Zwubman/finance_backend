@@ -83,6 +83,10 @@ const Expense = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    file: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     status: {
       type: DataTypes.ENUM("Requested", "Approved", "Rejected", "Paid"),
       allowNull: false,

@@ -12,11 +12,11 @@ import { requireRole } from "../Middlewares/auth.js";
 
 const router = express.Router();
 
-router.post("/", upload.single("receipt"), createLoan);
+router.post("/", upload.fields([{ name: "file" }, { name: "receipt" }]), createLoan);
 router.get("/", getAllLoans);
 router.get("/:id", getLoanById);
-router.put("/:id", upload.single("receipt"), updateLoan);
-router.patch("/update-status/:id", updateLoanStatus);
+router.put("/:id", upload.fields([{ name: "file" }, { name: "receipt" }]), updateLoan);
+router.put("/update-status/:id", upload.single("receipt"), updateLoanStatus);
 router.delete("/:id", deleteLoan);
 
 export default router;

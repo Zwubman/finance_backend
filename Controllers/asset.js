@@ -2,6 +2,7 @@ import Asset from "../Models/asset.js";
 import Expense from "../Models/expense.js";
 import Income from "../Models/income.js";
 import BankAccount from "../Models/bank_account.js";
+import db  from "../Config/database.js";
 
 /**
  * Create a new asset
@@ -31,19 +32,18 @@ export const createAsset = async (req, res) => {
       });
     }
 
-
     let from_acc = null;
     if (transaction_type === "Bought") {
-        from_acc = await BankAccount.findOne({
-          where: { account_id: from_account, is_deleted: false },
+      from_acc = await BankAccount.findOne({
+        where: { account_id: from_account, is_deleted: false },
+      });
+      if (!from_acc) {
+        return res.status(400).json({
+          success: false,
+          message: "Source bank account not found",
+          data: null,
         });
-        if (!from_acc) {
-          return res.status(400).json({
-            success: false,
-            message: "Source bank account not found",
-            data: null,
-          });
-        }
+      }
     }
 
     // Only validate destination account for sold assets (destination account
@@ -83,7 +83,7 @@ export const createAsset = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: `Invalid transaction type. Allowed: ${allowedTransactionTypes.join(
-          ", "
+          ", ",
         )}`,
       });
     }
@@ -115,11 +115,11 @@ export const createAsset = async (req, res) => {
       if (req.file) {
         receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
           /\\/g,
-          "/"
+          "/",
         )}`;
       } else {
         console.warn(
-          "No receipt provided for sold asset. Proceeding without receipt."
+          "No receipt provided for sold asset. Proceeding without receipt.",
         );
         receipt = null;
       }
@@ -170,17 +170,15 @@ export const createAsset = async (req, res) => {
       });
 
       from_acc.balance =
-        Number(from_acc.balance) -
-        Number(
-          asset.price * asset.quantity
-        ); 
+        Number(from_acc.balance) - Number(asset.price * asset.quantity);
       await from_acc.save();
 
       // Expose the created expense so frontend can immediately show it
       console.log("Created expense for bought asset:", createdExpense.toJSON());
       return res.status(201).json({
         success: true,
-        message: "Asset created successfully with appropriate financial records",
+        message:
+          "Asset created successfully with appropriate financial records",
         data: { asset, expense: createdExpense },
       });
     }
@@ -269,7 +267,10 @@ export const getAssetById = async (req, res) => {
 /**
  * Update asset by ID
  */
+
 export const updateAsset = async (req, res) => {
+  const t = await db.transaction();
+
   try {
     const { id } = req.params;
     const {
@@ -286,9 +287,12 @@ export const updateAsset = async (req, res) => {
 
     const asset = await Asset.findOne({
       where: { asset_id: id, is_deleted: false },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
     });
 
     if (!asset) {
+      await t.rollback();
       return res.status(404).json({
         success: false,
         message: "Asset not found",
@@ -300,28 +304,181 @@ export const updateAsset = async (req, res) => {
     if (name) to_update.name = name;
     if (category) to_update.category = category;
     if (manual_category) to_update.manual_category = manual_category;
-    if (quantity) to_update.quantity = quantity;
     if (transaction_type) to_update.transaction_type = transaction_type;
     if (purchase_date) to_update.purchase_date = purchase_date;
     if (sold_date) to_update.sold_date = sold_date;
-    if (price) to_update.price = price;
     if (vendor) to_update.vendor = vendor;
+    if (quantity) to_update.quantity = quantity;
+    if (price) to_update.price = price;
 
-    await asset.update(to_update);
+    // Use existing values if not provided
+    const finalQuantity = quantity ? Number(quantity) : Number(asset.quantity);
+    const finalPrice = price ? Number(price) : Number(asset.price);
 
-    res.status(200).json({
+    if (quantity || price) {
+      if (asset.transaction_type === "Bought") {
+        const expense = await Expense.findOne({
+          where: { asset_id: asset.asset_id },
+          transaction: t,
+          lock: t.LOCK.UPDATE,
+        });
+
+        if (!expense) {
+          await t.rollback();
+          return res.status(400).json({
+            success: false,
+            message: "Associated expense record not found",
+          });
+        }
+
+        if (expense.status !== "Requested") {
+          await t.rollback();
+          return res.status(400).json({
+            success: false,
+            message:
+              "Cannot update bought asset with its Expense status " + expense.status,
+          });
+        }
+
+        expense.amount = finalPrice * finalQuantity;
+        expense.description = `Purchase ${finalQuantity} unit(s) of ${asset.name}`;
+        await expense.save({ transaction: t });
+      }
+
+      else if (asset.transaction_type === "Sold") {
+        const income = await Income.findOne({
+          where: { asset_id: asset.asset_id },
+          transaction: t,
+          lock: t.LOCK.UPDATE,
+        });
+
+        if (!income) {
+          await t.rollback();
+          return res.status(400).json({
+            success: false,
+            message: "Associated income record not found",
+          });
+        }
+
+        const oldAmount = Number(income.amount);
+        const newAmount = finalPrice * finalQuantity;
+
+        income.amount = newAmount;
+        await income.save({ transaction: t });
+
+        const to_acc = await BankAccount.findOne({
+          where: {
+            account_id: income.to_account,
+            is_deleted: false,
+          },
+          transaction: t,
+          lock: t.LOCK.UPDATE,
+        });
+
+        if (!to_acc) {
+          await t.rollback();
+          return res.status(400).json({
+            success: false,
+            message: "Destination bank account not found",
+          });
+        }
+
+        to_acc.balance =
+          Number(to_acc.balance) - oldAmount + newAmount;
+
+        await to_acc.save({ transaction: t });
+      }
+    }
+
+    await asset.update(to_update, { transaction: t });
+
+    await t.commit();
+
+    return res.status(200).json({
       success: true,
       message: "Asset updated successfully",
       data: asset,
     });
+
   } catch (error) {
+    await t.rollback();
     console.error("Error updating asset:", error);
-    res.status(500).json({
+
+    return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: error.message, // show real error for debugging
     });
   }
 };
+
+export const sellAsset = async (req, res) => {
+  try{
+    const { id } = req.params;
+    const { price, quantity, to_account } = req.body;
+
+    const asset = await Asset.findOne({
+      where: { asset_id: id, is_deleted: false },
+    });
+
+    if (!asset) {
+      return res.status(404).json({
+        success: false,
+        message: "Asset not found",
+      });
+    }
+
+    if (asset.transaction_type !== "Bought") {
+      return res.status(400).json({
+        success: false,
+        message: "Only assets that were bought can be sold",
+      });
+    }
+
+    const to_acc = await BankAccount.findOne({
+      where: { account_id: to_account, is_deleted: false },
+    });
+
+    if (!to_acc) {
+      return res.status(400).json({
+        success: false,
+        message: "Destination bank account not found",
+        data: null,
+      });
+    }
+    const new_asset = await Asset.create({
+      name: asset.name,
+      category: asset.category,
+      quantity: quantity,
+      transaction_type: "Sold",
+      sold_date: new Date(),
+      price: price ,
+      vendor: asset.vendor,
+      status: "Disposed",
+    });
+
+    const income = await Income.create({
+      income_source: "Income from asset sales",
+      specific_source: `Sold asset: ${asset.name}`,
+      description: `Sale of ${quantity} unit(s) of ${asset.name}`,
+      amount: Number(price) * Number(quantity),
+      received_date: new Date(),
+      to_account: to_account,
+      asset_id: new_asset.asset_id,
+    });
+
+    to_acc.balance = Number(to_acc.balance) + Number(income.amount);
+    await to_acc.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Asset sold successfully with appropriate financial records",
+      data: new_asset,
+    });
+  }catch(error){
+    console.error("Error selling asset:", error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+}
 
 /**
  * Delete asset by ID (soft delete)
@@ -379,9 +536,13 @@ export const updateAssetStatus = async (req, res) => {
       });
     }
 
-    const asset = await Asset.findOne({ where: { asset_id: id, is_deleted: false } });
+    const asset = await Asset.findOne({
+      where: { asset_id: id, is_deleted: false },
+    });
     if (!asset) {
-      return res.status(404).json({ success: false, message: "Asset not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Asset not found" });
     }
 
     // Update only the status field to avoid overwriting other data

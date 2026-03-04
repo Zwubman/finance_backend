@@ -3,6 +3,7 @@ import Expense from "../Models/expense.js";
 import Income from "../Models/income.js";
 import Employee from "../Models/employee.js";
 import BankAccount from "../Models/bank_account.js";
+import db from "../Config/database.js";
 import fs from "fs";
 
 /**
@@ -92,26 +93,45 @@ export const createLoan = async (req, res) => {
       });
     }
 
-    const from_acc = await BankAccount.findOne({
-      where: { account_id: from_account, is_deleted: false },
-    });
-    if(!from_acc){
-      return res.status(404).json({
-        success: false,
-        message: "Bank account not found",
-        data: null,
+    let from_acc = null;
+
+    if (status === "Give_Request") {
+      if (!from_account) {
+        return res.status(400).json({
+          success: false,
+          message: "from_account is required when giving a loan",
+        });
+      }
+
+      from_acc = await BankAccount.findOne({
+        where: { account_id: from_account, is_deleted: false },
       });
+
+      if (!from_acc) {
+        return res.status(404).json({
+          success: false,
+          message: "From bank account not found",
+        });
+      }
     }
 
     // Normalize and sanitize inputs to avoid sending empty strings to integer/decimal columns
+    let file = null;
+    if (req.files?.file?.length > 0) {
+      const uploadedFile = req.files.file[0];
+      file = `${req.protocol}://${req.get("host")}/${uploadedFile.path.replace(
+        /\\/g,
+        "/",
+      )}`;
+    }
+
     let receipt = null;
-    if (status === "Received" && from_whom) {
-      if (req.file) {
-        receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
-          /\\/g,
-          "/"
-        )}`;
-      }
+    if (status === "Received" && req.files?.receipt?.length > 0) {
+      const uploadedReceipt = req.files.receipt[0];
+      receipt = `${req.protocol}://${req.get("host")}/${uploadedReceipt.path.replace(
+        /\\/g,
+        "/",
+      )}`;
     }
 
     // Convert empty-string values to null and ensure numeric fields are numbers
@@ -129,6 +149,7 @@ export const createLoan = async (req, res) => {
     const loan = await Loan.create({
       to_who: cleanedToWho,
       from_whom,
+      file,
       receipt,
       amount: cleanedAmount,
       interest_rate: cleanedInterest,
@@ -137,6 +158,8 @@ export const createLoan = async (req, res) => {
       purpose,
       penalty: cleanedPenalty,
       status,
+      from_account: from_account || null,
+      to_account: to_account || null,
     });
 
     const validStatuses = ["Received", "Repaid"];
@@ -156,23 +179,6 @@ export const createLoan = async (req, res) => {
 
       to_acc.balance = Number(to_acc.balance) + Number(amount);
       await to_acc.save();
-    } else if (status === "Give_Request") {
-      await Expense.create({
-        expense_reason:
-          loan.to_who !== null
-            ? "Expense for employee loan"
-            : "Expense for returning external loan",
-        specific_reason:
-          loan.to_who !== null
-            ? `Loan given to employee ID: ${loan.to_who}`
-            : `Loan returned to ${loan.from_whom}`,
-        amount:
-          loan.amount +
-          (loan.to_who === null ? (loan.interest_rate * loan.amount) / 100 : 0),
-        from_account: from_acc.account_id,
-        loan_id: loan.loan_id,
-        status: "Requested",
-      });
     }
     return res.status(201).json({
       success: true,
@@ -241,9 +247,15 @@ export const getAllLoans = async (req, res) => {
 
     const where = { is_deleted: false };
     if (role === "Accountant") {
-      where.status = ["Give_Request", "Return_Request"];
+      where.status = [
+        "Give_Request",
+        "Return_Request",
+        "Given",
+        "Returned",
+        "Received",
+      ];
     } else if (role === "Cashier") {
-      where.status = ["Given", "Returned"];
+      where.status = ["Given", "Returned", "Paid"];
     }
 
     const { count, rows: loans } = await Loan.findAndCountAll({
@@ -293,7 +305,10 @@ export const getAllLoans = async (req, res) => {
 /*
  * Update a loan
  */
+
 export const updateLoan = async (req, res) => {
+  const t = await db.transaction();
+
   try {
     const { id } = req.params;
     const {
@@ -308,10 +323,10 @@ export const updateLoan = async (req, res) => {
     } = req.body;
 
     if (Object.keys(req.body).length === 0) {
+      await t.rollback();
       return res.status(400).json({
         success: false,
         message: "No fields provided for update",
-        data: null,
       });
     }
 
@@ -320,47 +335,122 @@ export const updateLoan = async (req, res) => {
         loan_id: id,
         is_deleted: false,
       },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
     });
 
     if (!loan) {
+      await t.rollback();
       return res.status(404).json({
         success: false,
         message: "Loan not found",
-        data: null,
       });
     }
 
-    if (req.file && req.file.path) {
-      // Delete old local image
+    // ================= FILE UPDATES =================
+
+    if (req.files?.receipt?.[0]) {
+      const newReceipt = req.files.receipt[0];
+
       if (loan.receipt) {
-        const oldPath = loan.receipt.replace(
+        const oldReceiptPath = loan.receipt.replace(
           `${req.protocol}://${req.get("host")}/`,
-          ""
+          "",
         );
-        if (fs.existsSync(oldPath)) {
-          fs.unlinkSync(oldPath);
+        if (fs.existsSync(oldReceiptPath)) {
+          fs.unlinkSync(oldReceiptPath);
         }
       }
 
-      // Assign new image URL from multer
-      loan.receipt = `${req.protocol}://${req.get(
-        "host"
-      )}/${req.file.path.replace(/\\/g, "/")}`;
-      await loan.save();
+      loan.receipt = `${req.protocol}://${req.get("host")}/${newReceipt.path.replace(/\\/g, "/")}`;
+      await loan.save({ transaction: t });
     }
+
+    if (req.files?.file?.[0]) {
+      const newFile = req.files.file[0];
+
+      if (loan.file) {
+        const oldFilePath = loan.file.replace(
+          `${req.protocol}://${req.get("host")}/`,
+          "",
+        );
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
+
+      loan.file = `${req.protocol}://${req.get("host")}/${newFile.path.replace(/\\/g, "/")}`;
+      await loan.save({ transaction: t });
+    }
+
+    // ================= FIELD UPDATES =================
 
     const to_update = {};
 
     if (start_date) to_update.start_date = start_date;
     if (end_date) to_update.end_date = end_date;
-    if (amount) to_update.amount = amount;
     if (interest_rate) to_update.interest_rate = interest_rate;
     if (purpose) to_update.purpose = purpose;
     if (from_whom) to_update.from_whom = from_whom;
     if (to_who) to_update.to_who = to_who;
     if (penalty) to_update.penalty = penalty;
 
-    await loan.update(to_update);
+    // ================= AMOUNT UPDATE LOGIC =================
+
+    if (amount) {
+      const newAmount = Number(amount);
+      const oldAmount = Number(loan.amount);
+
+      if (loan.status === "Received") {
+        const to_acc = await BankAccount.findOne({
+          where: {
+            account_id: loan.to_account,
+            is_deleted: false,
+          },
+          transaction: t,
+          lock: t.LOCK.UPDATE,
+        });
+
+        if (!to_acc) {
+          await t.rollback();
+          return res.status(400).json({
+            success: false,
+            message: "Destination bank account not found",
+          });
+        }
+
+        const income = await Income.findOne({
+          where: {
+            loan_id: loan.loan_id,
+            is_deleted: false,
+          },
+          transaction: t,
+          lock: t.LOCK.UPDATE,
+        });
+
+        if (!income) {
+          await t.rollback();
+          return res.status(400).json({
+            success: false,
+            message: "Associated income record not found",
+          });
+        }
+
+        // Adjust bank balance safely
+        to_acc.balance = Number(to_acc.balance) - oldAmount + newAmount;
+
+        await to_acc.save({ transaction: t });
+
+        income.amount = newAmount;
+        await income.save({ transaction: t });
+      }
+
+      to_update.amount = newAmount;
+    }
+
+    await loan.update(to_update, { transaction: t });
+
+    await t.commit();
 
     return res.status(200).json({
       success: true,
@@ -368,8 +458,10 @@ export const updateLoan = async (req, res) => {
       data: loan,
     });
   } catch (error) {
-    console.error(error);
-    return res.status(400).json({
+    await t.rollback();
+    console.error("Error updating loan:", error);
+
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
@@ -427,7 +519,7 @@ export const updateLoanStatus = async (req, res) => {
   console.log(req);
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, from_account } = req.body;
     const role = req.user.role;
 
     const loan = await Loan.findOne({
@@ -456,7 +548,7 @@ export const updateLoanStatus = async (req, res) => {
         return res.status(403).json({
           success: false,
           message: `Accountant can only update status to: ${allowedStatus.join(
-            ", "
+            ", ",
           )}`,
           data: null,
         });
@@ -525,6 +617,30 @@ export const updateLoanStatus = async (req, res) => {
       });
     }
 
+    let from_acc = null;
+
+    if (loan.from_account) {
+      // runs only if not null / not undefined
+      from_acc = await BankAccount.findByPk(loan.from_account);
+
+      if (!from_acc) {
+        return res.status(404).json({
+          success: false,
+          message: "From account not found",
+          data: null,
+        });
+      }
+    } else if (from_account) {
+      from_acc = await BankAccount.findByPk(from_account);
+      if (!from_acc) {
+        return res.status(404).json({
+          success: false,
+          message: "From account not found",
+          data: null,
+        });
+      }
+    }
+
     if (status === "Given" || status === "Returned") {
       if (from_acc.balance < loan.amount) {
         return res.status(400).json({
@@ -541,7 +657,7 @@ export const updateLoanStatus = async (req, res) => {
       if (req.file) {
         receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
           /\\/g,
-          "/"
+          "/",
         )}`;
       } else {
         return res.status(400).json({
@@ -555,6 +671,7 @@ export const updateLoanStatus = async (req, res) => {
     await loan.update({
       status,
       receipt,
+      from_account: from_acc.account_id,
     });
 
     const expense = await Expense.findOne({
@@ -562,15 +679,25 @@ export const updateLoanStatus = async (req, res) => {
     });
 
     if (loan.status === "Paid") {
-      await expense.update({
-        expensed_date: new Date(),
+      await Expense.create({
+        expense_reason:
+          loan.to_who !== null
+            ? "Expense for employee loan"
+            : "Expense for returning external loan",
+        specific_reason:
+          loan.to_who !== null
+            ? `Loan given to employee ID: ${loan.to_who}`
+            : `Loan returned to ${loan.from_whom}`,
+        amount:
+          loan.amount +
+          (loan.to_who === null ? (loan.interest_rate * loan.amount) / 100 : 0),
+        from_account: from_acc.account_id,
+        loan_id: loan.loan_id,
         status: "Paid",
-        receipt: receipt,
+        reciept: loan.receipt,
       });
 
-      from_acc.balance =
-        Number(from_acc.balance) -
-        Number( expense.amount);  
+      from_acc.balance = Number(from_acc.balance) - Number(expense.amount);
       await from_acc.save();
     }
 

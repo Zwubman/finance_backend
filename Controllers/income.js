@@ -131,66 +131,66 @@ export const createIncome = async (req, res) => {
 /**
  * Get all incomes
  */
-export const getAllIncomes = async (req, res) => {
-  try {
-    const { page = 1, limit = 10, startDate, endDate } = req.query;
-    const offset = (page - 1) * limit;
+  export const getAllIncomes = async (req, res) => {
+    try {
+      const { page = 1, limit = 10, startDate, endDate } = req.query;
+      const offset = (page - 1) * limit;
 
-    // Build date filter
-    const dateFilter = {};
-    if (startDate && endDate) {
-      dateFilter.received_date = { [Op.between]: [startDate, endDate] };
-    } else if (startDate) {
-      dateFilter.received_date = { [Op.gte]: startDate };
-    } else if (endDate) {
-      dateFilter.received_date = { [Op.lte]: endDate };
-    }
+      // Build date filter
+      const dateFilter = {};
+      if (startDate && endDate) {
+        dateFilter.received_date = { [Op.between]: [startDate, endDate] };
+      } else if (startDate) {
+        dateFilter.received_date = { [Op.gte]: startDate };
+      } else if (endDate) {
+        dateFilter.received_date = { [Op.lte]: endDate };
+      }
 
-    const { count, rows: incomes } = await Income.findAndCountAll({
-      where: {
-        is_deleted: false,
-        ...dateFilter,
-      },
-      include: [
-        {
-          model: BankAccount,
-          as: "receiver",
-          attributes: ["account_id", "account_name"],
+      const { count, rows: incomes } = await Income.findAndCountAll({
+        where: {
+          is_deleted: false,
+          ...dateFilter,
         },
-        { model: Project, as: "from_project" },
-        { model: Loan, as: "from_loan" },
-      ],
-      order: [["received_date", "DESC"]],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-    });
-
-    const total_income = await Income.sum("amount", {
-      where: {
-        is_deleted: false,
-      },
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: "Incomes retrieved successfully",
-      data: incomes,
-      total_income: total_income || 0,
-      pagination: {
-        total: count,
-        page: parseInt(page),
+        include: [
+          {
+            model: BankAccount,
+            as: "receiver",
+            attributes: ["account_id", "account_name"],
+          },
+          { model: Project, as: "from_project" },
+          { model: Loan, as: "from_loan" },
+        ],
+        order: [["received_date", "DESC"]],
         limit: parseInt(limit),
-        totalPages: Math.ceil(count / limit),
-      },
-    });
-  } catch (error) {
-    console.error("Error retrieving incomes:", error);
-    return res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+        offset: parseInt(offset),
+      });
+
+      const total_income = await Income.sum("amount", {
+        where: {
+          is_deleted: false,
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Incomes retrieved successfully",
+        data: incomes,
+        total_income: total_income || 0,
+        pagination: {
+          total: count,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalPages: Math.ceil(count / limit),
+        },
+      });
+    } catch (error) {
+      console.error("Error retrieving incomes:", error);
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  };
 
 /**
  * Get income by ID

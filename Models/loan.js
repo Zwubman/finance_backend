@@ -28,6 +28,22 @@ const Loan = sequelize.define(
       type: DataTypes.DECIMAL,
       allowNull: false,
     },
+    from_account: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "bank_accounts",
+        key: "account_id",
+      },
+    },
+    to_account: {
+          type: DataTypes.INTEGER,
+          allowNull: true,
+          references: {
+            model: "bank_accounts",
+            key: "account_id",
+          },
+        },
     interest_rate: {
       type: DataTypes.DECIMAL,
       allowNull: false,
@@ -64,6 +80,10 @@ const Loan = sequelize.define(
       defaultValue: "Give_Request",
     },
     receipt: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    file: {
       type: DataTypes.STRING,
       allowNull: true,
     },

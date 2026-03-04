@@ -6,6 +6,7 @@ import {
 	updateAsset,
 	deleteAsset,
 	updateAssetStatus,
+	sellAsset
 } from "../Controllers/asset.js";
 import { requireRole } from "../Middlewares/auth.js";
 
@@ -18,5 +19,6 @@ router.put("/:id", updateAsset);
 // Change asset lifecycle status (Manager only)
 router.put("/:id/status", requireRole("Manager"), updateAssetStatus);
 router.delete("/:id", deleteAsset);
+router.post	("/sale-asset/:id", sellAsset);
 
 export default router;

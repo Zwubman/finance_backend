@@ -4,6 +4,7 @@ import Project from "../Models/project.js";
 import Loan from "../Models/loan.js";
 import fs from "fs";
 import { notifyRoles } from "../Utils/notifications.js";
+import {Op} from "sequelize";
 
 /**
  * Create a new expense
@@ -66,9 +67,9 @@ export const createExpense = async (req, res) => {
       }
     }
     // Attach receipt URL when a file was uploaded (optional)
-    let receipt = null;
+    let file = null;
     if (req.file && req.file.path) {
-      receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(/\\/g, "/")}`;
+      file = `${req.protocol}://${req.get("host")}/${req.file.path.replace(/\\/g, "/")}`;
     }
 
     // Ensure numeric amount and include the source account (from_account)
@@ -78,7 +79,7 @@ export const createExpense = async (req, res) => {
       specific_reason,
       amount: numericAmount,
       description,
-      receipt,
+      file,
       project_id: project_id || null,
       from_account: from_acc.account_id,
     });
@@ -128,12 +129,17 @@ export const getAllExpenses = async (req, res) => {
 
     const role = req.user.role;
 
-    const condition = {};
-    if (role === "Accountant") {
-      condition.status = ["Requested", "Approved", "Rejected"];
-    } else if (role === "Cashier") {
-      condition.status = ["Approved", "Paid"];
-    }
+const condition = {};
+
+if (role === "Accountant") {
+  condition.status = {
+    [Op.in]: ["Requested", "Approved", "Rejected", "Paid"],
+  };
+} else if (role === "Cashier") {
+  condition.status = {
+    [Op.in]: ["Approved", "Paid"],
+  };
+}
 
     // Build date filter
     const dateFilter = {};
@@ -412,7 +418,7 @@ export const updateExpenseStatus = async (req, res) => {
     }
 
     const from_acc = await BankAccount.findOne({
-      where: { account_name: "Peal", is_deleted: false },
+      where: { account_id: expense.from_account, is_deleted: false },
     });
     if (!from_acc) {
       return res.status(400).json({
@@ -422,17 +428,6 @@ export const updateExpenseStatus = async (req, res) => {
       });
     }
 
-    // Only check available balance when trying to mark the expense as Paid
-    if (
-      status === "Paid" &&
-      Number(from_acc.balance) < Number(expense.amount)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Insufficient balance in the bank account to pay the expense",
-        data: null,
-      });
-    }
 
     if (status === "Paid" && expense.status !== "Approved") {
       return res.status(400).json({
@@ -440,6 +435,16 @@ export const updateExpenseStatus = async (req, res) => {
         message: "Only approved expenses can be marked as paid",
         data: null,
       });
+    }
+
+    if(status === "Approved"){
+      if(from_acc.balance <= expense.amount){
+        return res.status(400).json({
+          success: false,
+          message: "Insufficient balance in source account to approve this expense",
+          data: null,
+        });
+      }
     }
 
     let receipt = null;
@@ -469,17 +474,44 @@ export const updateExpenseStatus = async (req, res) => {
     if (receipt) toUpdate.receipt = receipt;
     if (from_account !== null) toUpdate.from_account = from_account;
 
-    await expense.update(toUpdate);
+    if (status === "Paid") {
+      const sequelize = Expense.sequelize;
+      await sequelize.transaction(async (t) => {
+        await expense.update(toUpdate, { transaction: t });
 
-    if (expense.status === "Paid") {
-      // Deduct amount from bank account balance with transfer fee
-      const expenseAmount = Number(expense.amount || 0);
-      from_acc.balance =
-        Number(from_acc.balance) - (expenseAmount + expenseAmount * 0.02);
-      await from_acc.save();
+        // Deduct amount from bank account balance
+        const expenseAmount = Number(expense.amount || 0);
+        from_acc.balance = Number(from_acc.balance) - expenseAmount;
+        await from_acc.save({ transaction: t });
 
-      expense.expensed_date = new Date();
-      await expense.save();
+        expense.expensed_date = new Date();
+        await expense.save({ transaction: t });
+
+        // If this expense represents an employee loan disbursement, only mark
+        // the loan as Given after the expense is successfully paid.
+        if (
+          expense.loan_id &&
+          expense.expense_reason === "Expense for employee loan"
+        ) {
+          const loan = await Loan.findOne({
+            where: { loan_id: expense.loan_id, is_deleted: false },
+            transaction: t,
+          });
+
+          if (!loan) {
+            throw new Error("Linked loan not found for this expense");
+          }
+
+          if (loan.status === "Give_Request") {
+            await loan.update(
+              { status: "Given", receipt: receipt || loan.receipt || null },
+              { transaction: t }
+            );
+          }
+        }
+      });
+    } else {
+      await expense.update(toUpdate);
     }
 
     // send notifications based on new status
