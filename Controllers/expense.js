@@ -4,7 +4,7 @@ import Project from "../Models/project.js";
 import Loan from "../Models/loan.js";
 import fs from "fs";
 import { notifyRoles } from "../Utils/notifications.js";
-import {Op} from "sequelize";
+import { Op } from "sequelize";
 
 /**
  * Create a new expense
@@ -15,7 +15,7 @@ export const createExpense = async (req, res) => {
     // Protect against a missing body (e.g. missing body parser or wrong Content-Type)
     if (!req.body) {
       console.error(
-        "Request body is undefined. Ensure body-parsing middleware (express.json()/express.urlencoded() or multer) is configured on the server and the client sends the correct Content-Type."
+        "Request body is undefined. Ensure body-parsing middleware (express.json()/express.urlencoded() or multer) is configured on the server and the client sends the correct Content-Type.",
       );
       return res.status(400).json({
         success: false,
@@ -25,8 +25,14 @@ export const createExpense = async (req, res) => {
       });
     }
 
-    const { expense_reason, specific_reason, amount, description, project_id, from_account } =
-      req.body;
+    const {
+      expense_reason,
+      specific_reason,
+      amount,
+      description,
+      project_id,
+      from_account,
+    } = req.body;
 
     // Validate required fields
     if (!expense_reason || !amount || !specific_reason) {
@@ -86,20 +92,24 @@ export const createExpense = async (req, res) => {
 
     // If created, deduct amount from the source bank account
     if (new_expense) {
-      from_acc.balance =
-        Number(from_acc.balance) - Number(numericAmount);
-      await from_acc.save();
+      // from_acc.balance =
+      //   Number(from_acc.balance) - Number(numericAmount);
+      // await from_acc.save();
       try {
         const actorName =
-          (req.user && (req.user.first_name || req.user.name))
-            ? `${req.user.first_name || req.user.name} ${req.user.last_name || ''}`.trim()
-            : req.user?.email || `user:${req.user?.id || req.user?.user_id || 'unknown'}`;
+          req.user && (req.user.first_name || req.user.name)
+            ? `${req.user.first_name || req.user.name} ${req.user.last_name || ""}`.trim()
+            : req.user?.email ||
+              `user:${req.user?.id || req.user?.user_id || "unknown"}`;
         notifyRoles(["Accountant"], {
           title: "New expense created",
           message: `${actorName} created expense '${new_expense.description || new_expense.specific_reason}' (status: ${new_expense.status})`,
           expense_id: new_expense.expense_id,
           status: new_expense.status,
-          actor: { id: req.user?.id || req.user?.user_id || null, name: actorName },
+          actor: {
+            id: req.user?.id || req.user?.user_id || null,
+            name: actorName,
+          },
         });
       } catch (e) {
         console.error("Failed to send creation notification:", e);
@@ -113,9 +123,7 @@ export const createExpense = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating expense:", error);
-    res
-      .status(400)
-      .json({ success: false, message: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -129,17 +137,17 @@ export const getAllExpenses = async (req, res) => {
 
     const role = req.user.role;
 
-const condition = {};
+    const condition = {};
 
-if (role === "Accountant") {
-  condition.status = {
-    [Op.in]: ["Requested", "Approved", "Rejected", "Paid"],
-  };
-} else if (role === "Cashier") {
-  condition.status = {
-    [Op.in]: ["Approved", "Paid"],
-  };
-}
+    if (role === "Accountant") {
+      condition.status = {
+        [Op.in]: ["Requested", "Approved", "Rejected", "Paid"],
+      };
+    } else if (role === "Cashier") {
+      condition.status = {
+        [Op.in]: ["Approved", "Paid"],
+      };
+    }
 
     // Build date filter
     const dateFilter = {};
@@ -174,7 +182,7 @@ if (role === "Accountant") {
           attributes: ["loan_id", "amount"],
         },
       ],
-      order: [["expensed_date", "DESC"]],
+      order: [["createdAt", "DESC"]],
       limit: parseInt(limit),
       offset: parseInt(offset),
     });
@@ -208,9 +216,7 @@ if (role === "Accountant") {
     });
   } catch (error) {
     console.error("Error fetching expenses:", error);
-    res
-      .status(400)
-      .json({ success: false, message: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -256,9 +262,7 @@ export const getExpenseById = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching expense:", error);
-    res
-      .status(400)
-      .json({ success: false, message: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -297,7 +301,7 @@ export const updateExpense = async (req, res) => {
       if (expense.receipt) {
         const oldPath = expense.receipt.replace(
           `${req.protocol}://${req.get("host")}/`,
-          ""
+          "",
         );
         if (fs.existsSync(oldPath)) {
           fs.unlinkSync(oldPath);
@@ -306,7 +310,7 @@ export const updateExpense = async (req, res) => {
 
       // Assign new image URL from multer
       expense.receipt = `${req.protocol}://${req.get(
-        "host"
+        "host",
       )}/${req.file.path.replace(/\\/g, "/")}`;
       await expense.save();
     }
@@ -327,9 +331,7 @@ export const updateExpense = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating expense:", error);
-    res
-      .status(400)
-      .json({ success: false, message: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -363,9 +365,7 @@ export const deleteExpense = async (req, res) => {
     });
   } catch (error) {
     console.error("Error deleting expense:", error);
-    res
-      .status(400)
-      .json({ success: false, message: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -428,7 +428,6 @@ export const updateExpenseStatus = async (req, res) => {
       });
     }
 
-
     if (status === "Paid" && expense.status !== "Approved") {
       return res.status(400).json({
         success: false,
@@ -437,11 +436,12 @@ export const updateExpenseStatus = async (req, res) => {
       });
     }
 
-    if(status === "Approved"){
-      if(from_acc.balance <= expense.amount){
+    if (status === "Approved") {
+      if (Number(from_acc.balance) <= Number(expense.amount)) {
         return res.status(400).json({
           success: false,
-          message: "Insufficient balance in source account to approve this expense",
+          message:
+            "Insufficient balance in source account to approve this expense",
           data: null,
         });
       }
@@ -452,7 +452,7 @@ export const updateExpenseStatus = async (req, res) => {
       if (req.file) {
         receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
           /\\/g,
-          "/"
+          "/",
         )}`;
       } else {
         return res.status(400).json({
@@ -505,7 +505,7 @@ export const updateExpenseStatus = async (req, res) => {
           if (loan.status === "Give_Request") {
             await loan.update(
               { status: "Given", receipt: receipt || loan.receipt || null },
-              { transaction: t }
+              { transaction: t },
             );
           }
         }
@@ -517,9 +517,10 @@ export const updateExpenseStatus = async (req, res) => {
     // send notifications based on new status
     try {
       const actorName =
-        (req.user && (req.user.first_name || req.user.name))
-          ? `${req.user.first_name || req.user.name} ${req.user.last_name || ''}`.trim()
-          : req.user?.email || `user:${req.user?.id || req.user?.user_id || 'unknown'}`;
+        req.user && (req.user.first_name || req.user.name)
+          ? `${req.user.first_name || req.user.name} ${req.user.last_name || ""}`.trim()
+          : req.user?.email ||
+            `user:${req.user?.id || req.user?.user_id || "unknown"}`;
 
       if (status === "Rejected") {
         notifyRoles(["Manager"], {
@@ -527,7 +528,10 @@ export const updateExpenseStatus = async (req, res) => {
           message: `${actorName} rejected expense '${expense.description || expense.specific_reason}'`,
           expense_id: expense.expense_id,
           status,
-          actor: { id: req.user?.id || req.user?.user_id || null, name: actorName },
+          actor: {
+            id: req.user?.id || req.user?.user_id || null,
+            name: actorName,
+          },
         });
       } else if (status === "Approved") {
         notifyRoles(["Manager", "Cashier"], {
@@ -535,7 +539,10 @@ export const updateExpenseStatus = async (req, res) => {
           message: `${actorName} approved expense '${expense.description || expense.specific_reason}'`,
           expense_id: expense.expense_id,
           status,
-          actor: { id: req.user?.id || req.user?.user_id || null, name: actorName },
+          actor: {
+            id: req.user?.id || req.user?.user_id || null,
+            name: actorName,
+          },
         });
       } else if (status === "Paid") {
         notifyRoles(["Manager", "Accountant"], {
@@ -543,7 +550,10 @@ export const updateExpenseStatus = async (req, res) => {
           message: `${actorName} marked expense '${expense.description || expense.specific_reason}' as paid`,
           expense_id: expense.expense_id,
           status,
-          actor: { id: req.user?.id || req.user?.user_id || null, name: actorName },
+          actor: {
+            id: req.user?.id || req.user?.user_id || null,
+            name: actorName,
+          },
         });
       }
     } catch (e) {
@@ -557,8 +567,6 @@ export const updateExpenseStatus = async (req, res) => {
     });
   } catch (error) {
     console.error("Error approving expense:", error);
-    res
-      .status(400)
-      .json({ success: false, message: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 };

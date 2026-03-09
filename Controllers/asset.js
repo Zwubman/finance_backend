@@ -2,7 +2,7 @@ import Asset from "../Models/asset.js";
 import Expense from "../Models/expense.js";
 import Income from "../Models/income.js";
 import BankAccount from "../Models/bank_account.js";
-import db  from "../Config/database.js";
+import db from "../Config/database.js";
 
 /**
  * Create a new asset
@@ -169,12 +169,11 @@ export const createAsset = async (req, res) => {
         receipt,
       });
 
-      from_acc.balance =
-        Number(from_acc.balance) - Number(asset.price * asset.quantity);
-      await from_acc.save();
+      // from_acc.balance =
+      //   Number(from_acc.balance) - Number(asset.price * asset.quantity);
+      // await from_acc.save();
 
-      // Expose the created expense so frontend can immediately show it
-      console.log("Created expense for bought asset:", createdExpense.toJSON());
+
       return res.status(201).json({
         success: true,
         message:
@@ -336,16 +335,15 @@ export const updateAsset = async (req, res) => {
           return res.status(400).json({
             success: false,
             message:
-              "Cannot update bought asset with its Expense status " + expense.status,
+              "Cannot update bought asset with its Expense status " +
+              expense.status,
           });
         }
 
         expense.amount = finalPrice * finalQuantity;
         expense.description = `Purchase ${finalQuantity} unit(s) of ${asset.name}`;
         await expense.save({ transaction: t });
-      }
-
-      else if (asset.transaction_type === "Sold") {
+      } else if (asset.transaction_type === "Sold") {
         const income = await Income.findOne({
           where: { asset_id: asset.asset_id },
           transaction: t,
@@ -383,8 +381,7 @@ export const updateAsset = async (req, res) => {
           });
         }
 
-        to_acc.balance =
-          Number(to_acc.balance) - oldAmount + newAmount;
+        to_acc.balance = Number(to_acc.balance) - oldAmount + newAmount;
 
         await to_acc.save({ transaction: t });
       }
@@ -399,7 +396,6 @@ export const updateAsset = async (req, res) => {
       message: "Asset updated successfully",
       data: asset,
     });
-
   } catch (error) {
     await t.rollback();
     console.error("Error updating asset:", error);
@@ -412,7 +408,7 @@ export const updateAsset = async (req, res) => {
 };
 
 export const sellAsset = async (req, res) => {
-  try{
+  try {
     const { id } = req.params;
     const { price, quantity, to_account } = req.body;
 
@@ -451,7 +447,7 @@ export const sellAsset = async (req, res) => {
       quantity: quantity,
       transaction_type: "Sold",
       sold_date: new Date(),
-      price: price ,
+      price: price,
       vendor: asset.vendor,
       status: "Disposed",
     });
@@ -474,11 +470,11 @@ export const sellAsset = async (req, res) => {
       message: "Asset sold successfully with appropriate financial records",
       data: new_asset,
     });
-  }catch(error){
+  } catch (error) {
     console.error("Error selling asset:", error);
     res.status(400).json({ success: false, message: error.message });
   }
-}
+};
 
 /**
  * Delete asset by ID (soft delete)

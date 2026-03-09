@@ -273,6 +273,7 @@ export const getAllLoans = async (req, res) => {
           ],
         },
       ],
+      order: [["createdAt", "DESC"]],
       limit: parseInt(limit),
       offset: parseInt(offset),
     });
@@ -641,8 +642,12 @@ export const updateLoanStatus = async (req, res) => {
       }
     }
 
+    const balance = Number(from_acc.balance);
+    const amount = Number(loan.amount);
+
+
     if (status === "Given" || status === "Returned") {
-      if (from_acc.balance < loan.amount) {
+      if (balance < amount) {
         return res.status(400).json({
           success: false,
           message:
@@ -674,12 +679,10 @@ export const updateLoanStatus = async (req, res) => {
       from_account: from_acc.account_id,
     });
 
-    const expense = await Expense.findOne({
-      where: { loan_id: loan.loan_id },
-    });
+
 
     if (loan.status === "Paid") {
-      await Expense.create({
+      const expense = await Expense.create({
         expense_reason:
           loan.to_who !== null
             ? "Expense for employee loan"
@@ -694,7 +697,7 @@ export const updateLoanStatus = async (req, res) => {
         from_account: from_acc.account_id,
         loan_id: loan.loan_id,
         status: "Paid",
-        reciept: loan.receipt,
+        receipt: loan.receipt,
       });
 
       from_acc.balance = Number(from_acc.balance) - Number(expense.amount);
