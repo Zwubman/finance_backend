@@ -255,7 +255,7 @@ export const getAllLoans = async (req, res) => {
         "Received",
       ];
     } else if (role === "Cashier") {
-      where.status = ["Given", "Returned", "Paid"];
+      where.status = ["Given", "Returned", "Paid", "Received"];
     }
 
     const { count, rows: loans } = await Loan.findAndCountAll({
