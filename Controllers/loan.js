@@ -49,6 +49,25 @@ export const createLoan = async (req, res) => {
       });
     }
 
+    if (start_date && end_date) {
+      const start = new Date(start_date);
+      const end = new Date(end_date);
+
+      if (start.getTime() === end.getTime()) {
+        return res.status(400).json({
+          success: false,
+          message: "Start date and End date cannot be the same day",
+        });
+      }
+
+      if (end < start) {
+        return res.status(400).json({
+          success: false,
+          message: "End date must be after start date",
+        });
+      }
+    }
+
     if (to_who) {
       const employee = await Employee.findOne({
         where: { employee_id: to_who, is_deleted: false },
@@ -645,7 +664,6 @@ export const updateLoanStatus = async (req, res) => {
     const balance = Number(from_acc.balance);
     const amount = Number(loan.amount);
 
-
     if (status === "Given" || status === "Returned") {
       if (balance < amount) {
         return res.status(400).json({
@@ -679,8 +697,6 @@ export const updateLoanStatus = async (req, res) => {
       from_account: from_acc.account_id,
     });
 
-
-
     if (loan.status === "Paid") {
       const expense = await Expense.create({
         expense_reason:
@@ -692,8 +708,10 @@ export const updateLoanStatus = async (req, res) => {
             ? `Loan given to employee ID: ${loan.to_who}`
             : `Loan returned to ${loan.from_whom}`,
         amount:
-          loan.amount +
-          (loan.to_who === null ? (loan.interest_rate * loan.amount) / 100 : 0),
+          Number(loan.amount) +
+          (loan.to_who === null
+            ? Number(loan.interest_rate * loan.amount) / 100
+            : 0),
         from_account: from_acc.account_id,
         loan_id: loan.loan_id,
         status: "Paid",
