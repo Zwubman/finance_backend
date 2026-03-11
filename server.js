@@ -28,11 +28,7 @@ const app = express();
 
 app.use(
   cors({
-    // origin: "https://finance.system.teamworksc.com",
-    origin: [
-    "http://localhost:5173",
-    "https://finance.system.teamworksc.com"
-  ],
+    origin: "https://finance.system.teamworksc.com",
     credentials: true,
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
