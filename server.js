@@ -38,7 +38,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
-
+app.get("/", (req, res, next)=>{
+return res.json("welcome to finance system")
+})
 app.post("/login", login);
 app.post("/verify-otp", verifyLoginOtp);
 app.post("/logout", logout);
@@ -75,7 +77,7 @@ const startServer = async () => {
       console.log(`Server is running on port ${PORT}`);
     });
 
-    // await sequelize.sync({ alter: true });
+    await sequelize.sync({ alter: true });
     console.log("All models synced and tables created/updated");
   } catch (err) {
     console.error("Unable to connect to the database:", err);
