@@ -65,13 +65,19 @@ export const createIncome = async (req, res) => {
         });
       }
     }
+    //receipt handling
 
     let receipt = null;
     if (req.file) {
-      receipt = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
-        /\\/g,
-        "/"
-      )}`;
+      receipt = req.file.path.replace(/\\/g, "/");
+      if (!receipt.startsWith("uploads/")) {
+        const uploadsIndex = receipt.indexOf("uploads/");
+        if (uploadsIndex !== -1) {
+          receipt = receipt.substring(uploadsIndex);
+        } else {
+          receipt = `uploads/${req.file.filename}`;
+        }
+      }
     } else {
       return res.status(400).json({
         success: false,
@@ -87,7 +93,7 @@ export const createIncome = async (req, res) => {
       amount,
       received_date,
       to_account,
-      receipt,
+      receipt, 
       project_id: project_id || null,
       description: description || null,
     });
@@ -131,66 +137,66 @@ export const createIncome = async (req, res) => {
 /**
  * Get all incomes
  */
-  export const getAllIncomes = async (req, res) => {
-    try {
-      const { page = 1, limit = 10, startDate, endDate } = req.query;
-      const offset = (page - 1) * limit;
+export const getAllIncomes = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, startDate, endDate } = req.query;
+    const offset = (page - 1) * limit;
 
-      // Build date filter
-      const dateFilter = {};
-      if (startDate && endDate) {
-        dateFilter.received_date = { [Op.between]: [startDate, endDate] };
-      } else if (startDate) {
-        dateFilter.received_date = { [Op.gte]: startDate };
-      } else if (endDate) {
-        dateFilter.received_date = { [Op.lte]: endDate };
-      }
-
-      const { count, rows: incomes } = await Income.findAndCountAll({
-        where: {
-          is_deleted: false,
-          ...dateFilter,
-        },
-        include: [
-          {
-            model: BankAccount,
-            as: "receiver",
-            attributes: ["account_id", "account_name"],
-          },
-          { model: Project, as: "from_project" },
-          { model: Loan, as: "from_loan" },
-        ],
-        order: [["received_date", "DESC"]],
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-      });
-
-      const total_income = await Income.sum("amount", {
-        where: {
-          is_deleted: false,
-        },
-      });
-
-      return res.status(200).json({
-        success: true,
-        message: "Incomes retrieved successfully",
-        data: incomes,
-        total_income: total_income || 0,
-        pagination: {
-          total: count,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalPages: Math.ceil(count / limit),
-        },
-      });
-    } catch (error) {
-      console.error("Error retrieving incomes:", error);
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
+    // Build date filter
+    const dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter.received_date = { [Op.between]: [startDate, endDate] };
+    } else if (startDate) {
+      dateFilter.received_date = { [Op.gte]: startDate };
+    } else if (endDate) {
+      dateFilter.received_date = { [Op.lte]: endDate };
     }
-  };
+
+    const { count, rows: incomes } = await Income.findAndCountAll({
+      where: {
+        is_deleted: false,
+        ...dateFilter,
+      },
+      include: [
+        {
+          model: BankAccount,
+          as: "receiver",
+          attributes: ["account_id", "account_name"],
+        },
+        { model: Project, as: "from_project" },
+        { model: Loan, as: "from_loan" },
+      ],
+      order: [["received_date", "DESC"]],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+    });
+
+    const total_income = await Income.sum("amount", {
+      where: {
+        is_deleted: false,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Incomes retrieved successfully",
+      data: incomes,
+      total_income: total_income || 0,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / limit),
+      },
+    });
+  } catch (error) {
+    console.error("Error retrieving incomes:", error);
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 /**
  * Get income by ID
@@ -233,7 +239,7 @@ export const getIncomeById = async (req, res) => {
     console.error("Error retrieving income record:", error);
     return res.status(400).json({
       success: false,
-        message: error.message,
+      message: error.message,
     });
   }
 };
@@ -281,7 +287,7 @@ export const updateIncome = async (req, res) => {
       if (income.receipt) {
         const oldPath = income.receipt.replace(
           `${req.protocol}://${req.get("host")}/`,
-          ""
+          "",
         );
         if (fs.existsSync(oldPath)) {
           fs.unlinkSync(oldPath);
@@ -290,7 +296,7 @@ export const updateIncome = async (req, res) => {
 
       // Assign new image URL from multer
       income.receipt = `${req.protocol}://${req.get(
-        "host"
+        "host",
       )}/${req.file.path.replace(/\\/g, "/")}`;
       await income.save();
     }
