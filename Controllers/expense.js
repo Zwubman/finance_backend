@@ -9,6 +9,7 @@ import { Op } from "sequelize";
 /**
  * Create a new expense
  */
+
 export const createExpense = async (req, res) => {
   try {
     console.log("Request body:", req.body);
@@ -72,10 +73,25 @@ export const createExpense = async (req, res) => {
         });
       }
     }
-    // Attach receipt URL when a file was uploaded (optional)
+    
+    // FIXED: Store only the relative path, not the full URL with localhost
     let file = null;
     if (req.file && req.file.path) {
-      file = `${req.protocol}://${req.get("host")}/${req.file.path.replace(/\\/g, "/")}`;
+      // Convert Windows backslashes to forward slashes and store relative path
+      file = req.file.path.replace(/\\/g, '/');
+      
+      // Optional: If you want to ensure it starts with 'uploads/'
+      // This handles cases where multer might return absolute path
+      if (!file.startsWith('uploads/')) {
+        // Extract just the 'uploads/...' part if it's an absolute path
+        const uploadsIndex = file.indexOf('uploads/');
+        if (uploadsIndex !== -1) {
+          file = file.substring(uploadsIndex);
+        } else {
+          // Fallback: just use the filename with uploads directory
+          file = `uploads/${req.file.filename}`;
+        }
+      }
     }
 
     // Ensure numeric amount and include the source account (from_account)
@@ -85,7 +101,7 @@ export const createExpense = async (req, res) => {
       specific_reason,
       amount: numericAmount,
       description,
-      file,
+      file, // Now stores relative path like "uploads/documents/filename.pdf"
       project_id: project_id || null,
       from_account: from_acc.account_id,
     });
