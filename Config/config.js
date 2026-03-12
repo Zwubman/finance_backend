@@ -12,10 +12,10 @@ export default {
     dialect: "postgres",
     logging: false,
     dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false, // required for Render Postgres
-      },
+      // ssl: {
+      //   require: true,
+      //   rejectUnauthorized: false, // required for Render Postgres
+      // },
     },
   },
   test: {
@@ -27,10 +27,10 @@ export default {
     dialect: "postgres",
     logging: false,
     dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false, // required for Render Postgres
-      },
+      // ssl: {
+      //   require: true,
+      //   rejectUnauthorized: false, // required for Render Postgres
+      // },
     },
   },
   production: {
@@ -42,10 +42,10 @@ export default {
     dialect: "postgres",
     logging: false,
     dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false, // required for Render Postgres
-      },
+      // ssl: {
+      //   require: true,
+      //   rejectUnauthorized: false, // required for Render Postgres
+      // },
     },
   },
 };
