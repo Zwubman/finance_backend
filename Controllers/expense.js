@@ -72,7 +72,7 @@ export const createExpense = async (req, res) => {
         });
       }
     }
-    // Attach receipt URL when a file was uploaded (optional)
+    // Attach file URL when a file was uploaded (optional)
     let file = null;
     if (req.file && req.file.path) {
       file = `${req.protocol}://${req.get("host")}/${req.file.path.replace(/\\/g, "/")}`;
