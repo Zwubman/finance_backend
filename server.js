@@ -28,7 +28,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "https://finance.system.teamworksc.com",
     credentials: true,
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
@@ -38,7 +38,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
-
+app.get("/", (req, res, next)=>{
+return res.json("welcome to finance system")
+})
 app.post("/login", login);
 app.post("/verify-otp", verifyLoginOtp);
 app.post("/logout", logout);
